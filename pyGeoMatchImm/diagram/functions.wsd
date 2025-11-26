@@ -1,0 +1,173 @@
+@startuml
+
+package "pyGeoMatchImm.data" {
+    class BaseDataset {
+        +data_path : String
+        +config : TrainConfigs
+        +to_df()
+        +_check_struct_file()
+        +__len__()
+        +__getitem__(idx)
+        +__iter__()
+    }
+
+    class PDBDataset {
+        +data_path : String
+        +config : TrainConfigs
+        +preprocess()
+    }
+
+    class ModelDataset {
+        +data_path : String
+        +config : TrainConfigs
+        +preprocess()
+    }
+
+    class TCRpMHCDataset {
+        +data_path : String
+        +config : TrainConfigs
+        +show_graph(sample_id: String, pymol_gui: Bool)
+        +_struct_parser()
+        +_graph_generator()
+        +_fetchers() : (ids, graphs, sequences, channels)
+        +__len__()
+        +__getitem__() : SamplePair
+        +__iter__()
+    }
+
+    class ChannelsDataset {
+        +dataset: TCRpMHCDataset
+        +config: TrainConfigs
+        +shuffle: Bool
+        +drop_last: Bool
+        +get_str_channel(name: String) : List[torch.Dataset]
+        +get_seq_channel(name: String) : sSeq.sequences
+        +get_labels() : list[torch.tensor]
+        +get_ids() : list[str]
+    }
+}
+
+package "pyGeoMatchImm.data.parser" {
+    class StructureParser {
+        +__init__(pairing_method, **kwargs)
+        +__call__(sample_seq)
+        +_pairing(sample_seq, pair_names)
+        +_graphein(channel_name, sample_seq)
+        +_builtin(channel_name, sample_seq)
+        +_validate_seq(obj, require)
+    }
+
+    object get_interface_tcrpmhc {
+        +pdb_file : String
+        +channel_name : String
+    }
+}
+
+package "pyGeoMatchImm.data.generators.graphein" {
+  class GrapheinGeneratorRes {
+    +__init__(edge_params, node_params, graph_params, other_params, **kwargs)
+    +__call__(sample)
+    +_edges_functions()
+    +_nodes_functions()
+    +_graph_functions()
+    +_graph_constructor()
+  }
+  class GrapheinToChannels {
+    +__init__(config)
+    +__call__(sample)
+  }
+}
+
+package "pyGeoMatchImm.data.generators.builtin" {
+    class BuiltinGenerator {
+        +__init__(config)
+        +__call__(sample)
+    }
+}
+
+
+package "pyGeoMatchImm.data.featurize" {
+  class PositionalEncoding {
+    +__init__(d_model, dropout, max_len)
+    +forward()
+  }
+  class EmbeddingGenerator {
+    +__init__(dataset)
+    +forward(x)
+  }
+  class ProteinFeatures {
+        +dataset: TCRpMHCDataset
+        +config: TrainConfigs
+        +NodeEnc()
+        +EdgeEnc()
+        +forward()
+        }
+}
+
+package "pyGeoMatchImm.utils" {
+  object multiproc {
+    +run_function : Callable
+    +data : List
+  }
+
+  note right of multiproc::run_function
+  Calls:
+  - TCRpMHCDataset::_struct_parser
+  - TCRpMHCDataset::_graph_generator
+
+end note
+
+  class register {
+    +register(key)
+  }
+  class get {
+    +get(key)
+  }
+  class launch_pymol {
+    +launch_pymol(input)
+  }
+  class save_graph {
+    +save_graph(G, channel_name)
+  }
+}
+
+package "pyGeoMatchImm.utils.base" {
+  class sSeq
+  class sStruct
+  class SamplePair {
+    +id : String
+    +struct: sStruct
+    +seq: sSeq
+    +label: Integer
+    +get_graphs: Dict[String, nx.Graph]
+  }
+  class TrainConfigs
+  class TestConfigs
+  class ChannelsInput
+}
+
+package "pyGeoMatchImm.utils.negatives" {
+  class DistNegativeSampler {
+    +__init__(input_path, cdr_ranges_path, proportion, readable_df_path)
+    +_add_readable_df(readable_df_path)
+    +_prepare_data()
+    +_precompute_peptide_distances()
+    +generate_negatives()
+    +build_dataset(list_new_partial_tcrs)
+  }
+}
+
+
+
+BaseDataset <|-- PDBDataset: preprocess()
+BaseDataset <|-- ModelDataset: preprocess()
+
+TCRpMHCDataset ..> BaseDataset : TrainConfigs(source)
+
+
+StructureParser <.. get_interface_tcrpmhc : <<selects>>
+TCRpMHCDataset [_struct_parser()] o-- StructureParser : TrainConfigs(pairing_method)
+TCRpMHCDataset [_graphein_generator()] <.. GrapheinGeneratorRes : TrainConfigs(graph_method)
+
+
+@enduml

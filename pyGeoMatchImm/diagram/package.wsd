@@ -1,0 +1,56 @@
+@startuml pyGeoMatchImm_Package_Diagram
+
+package "pyGeoMatchImm" {
+    [data] 
+    [metrics]
+    [models]
+    [test]
+    [train]
+    [utils]
+}
+
+package "data" {
+    [datasets.py]
+    [parser.py]
+    [generators.graphein.py]
+    [featurize.py]
+}
+
+package "utils" {
+    [base.py]
+    [registry.py]
+    [utils.py]
+    [visualize.py]
+    [negatives.py]
+    [enrichment.py]
+}
+
+[data] ..> [utils] : uses
+[data] ..> [metrics] : metrics
+[data] ..> [models] : model training
+[data] ..> [test] : test interface
+[data] ..> [train] : training pipeline
+
+[datasets.py] --> [parser.py] : uses StructureParser
+[datasets.py] --> [generators.graphein.py] : uses Graph Generators
+[datasets.py] --> [utils.base.py] : uses dataclass definitions
+[datasets.py] --> [utils.registry.py] : uses registry
+
+[parser.py] --> [utils.base.py] : uses dataclasses
+[parser.py] --> [utils.registry.py] : uses get, register
+
+[generators.graphein.py] --> [utils.base.py] : uses TrainConfigs, SamplePair
+[generators.graphein.py] --> [utils.registry.py] : uses register
+
+[featurize.py] --> [datasets.py] : uses TCRpMHCDataset
+[featurize.py] --> [utils.base.py] : uses TrainConfigs, SamplePair
+
+[utils.base.py] ..> [utils.registry.py] : registry pattern
+
+[visualize.py] --> [networkx]
+[visualize.py] --> [matplotlib]
+[visualize.py] --> [pymol]
+
+[negatives.py] --> [utils.registry.py] : register negative sampler
+
+@enduml
