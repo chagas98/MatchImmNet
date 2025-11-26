@@ -50,7 +50,7 @@ tcr3d_data.drop(['TRA', 'TRB', 'MHCseq'], axis=1, inplace=True)
 tcr3d_data.rename(columns=map_cols, inplace=True)
 tcr3d_data.reset_index(drop=True, inplace=True)
 print(tcr3d_data.head())
-af_data_path = "data/02-processed/AF_vdjdb_score3_20251026.csv"
+af_data_path = "data/01-raw/AF_vdjdb_score3_20251026.csv"
 af_data = pd.read_csv(af_data_path)
 af_data.rename(columns=map_cols, inplace=True)
 af_data.reset_index(drop=True, inplace=True)
@@ -66,7 +66,7 @@ train_data = train_data.dropna(subset=['filepath_a', 'filepath_b'], how='any')
 select_columns = ['id', 'TRA', 'TRB', 'CDR1A', 'CDR2A', 'CDR3A', 'CDR1B', 'CDR2B', 'CDR3B', 'TRA_num', 'TRB_num', 'epitope', 'MHCseq', 'mhc_allele', 'filepath_a', 'filepath_b', 'label', 'source']
 train_data.drop_duplicates(subset=["TRA", "TRB", "epitope", "MHCseq"], inplace=True)
 train_data = train_data[select_columns].copy()
-train_data.to_csv("tcrpMHC_combined_train_data.csv", index=False)
+train_data.to_csv("data/02-processed/tcrpMHC_combined_train_data.csv", index=False)
 
 
 model_params = {
@@ -104,7 +104,7 @@ config = {
     "save_dir"        : ''
 }
 
-dataset = TCRpMHCDataset("tcrpMHC_combined_train_data.csv", config=config)
+dataset = TCRpMHCDataset("data/02-processed/tcrpMHC_combined_train_data.csv", config=config)
 
 
 models_dict = {
