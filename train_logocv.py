@@ -44,13 +44,16 @@ map_cols = {
     'peptide': 'epitope'
 }
 
+# Load Experimental Data
 tcr3d_data_path = "data/02-processed/tcr3d_20251004_renamed.csv"
 tcr3d_data = pd.read_csv(tcr3d_data_path, index_col=0)
 tcr3d_data.drop(['TRA', 'TRB', 'MHCseq'], axis=1, inplace=True)
 tcr3d_data.rename(columns=map_cols, inplace=True)
 tcr3d_data.reset_index(drop=True, inplace=True)
 print(tcr3d_data.head())
-af_data_path = "data/01-raw/AF_vdjdb_score3_20251026.csv"
+
+# Load AF Data
+af_data_path = "data/01-raw/AF_vdjdb_score3_20251209.csv"
 af_data = pd.read_csv(af_data_path)
 af_data.rename(columns=map_cols, inplace=True)
 af_data.reset_index(drop=True, inplace=True)
@@ -62,10 +65,9 @@ tcr3d_data = tcr3d_data[~tcr3d_data['epitope'].isin(af_data['epitope'])]
 train_data = pd.concat([tcr3d_data, af_data], ignore_index=True)
 train_data = train_data.dropna(subset=['filepath_a', 'filepath_b'], how='any')
 
-
 select_columns = ['id', 'TRA', 'TRB', 'CDR1A', 'CDR2A', 'CDR3A', 'CDR1B', 'CDR2B', 'CDR3B', 'TRA_num', 'TRB_num', 'epitope', 'MHCseq', 'mhc_allele', 'filepath_a', 'filepath_b', 'label', 'source']
 train_data.drop_duplicates(subset=["TRA", "TRB", "epitope", "MHCseq"], inplace=True)
-train_data = train_data[select_columns].copy()
+train_data = train_data[select_columns].head(30).copy()
 train_data.to_csv("data/02-processed/tcrpMHC_combined_train_data.csv", index=False)
 
 
@@ -90,9 +92,9 @@ config = {
     "source"          : "pdb",
     "channels"        : ["TCR", "pMHC"],
     "pairing_method"  : "basic",
-    "embed_method"    : ["esm3", "atchley"],
+    "embed_method"    : ["atchley"],
     "graph_method"    : "graphein",
-    "negative_prop"   : 5,
+    "negative_prop"   : 1,
     "edge_params"     : ["distance_threshold"],
     "node_params"     : ["amino_acid_one_hot", "hbond_donors", "hbond_acceptors", "dssp_config"],
     "graph_params"    : ["rsa"],
@@ -120,11 +122,11 @@ models_dict = {
 }
 
 for j, embed in enumerate(config['embed_method']):
-    for i, arch in enumerate([ "cagin", "multigin", "cagat", "multigat", "cagcn", "multigcn"]):
+    for i, arch in enumerate(["cagin"]):
 
-        if embed == 'esm3' and arch in ["cagin", "multigin"]:
-            log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
-            continue
+        #if embed == 'esm3' and arch in ["cagin", "multigin"]:
+        #    log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
+        #    continue
 
         model_class = models_dict[arch]
 
