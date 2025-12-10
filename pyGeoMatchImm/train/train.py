@@ -232,14 +232,6 @@ class CrossValidator:
         self.summary_results_best = pd.DataFrame(self.summary_results_best)
         self.summary_results_best.to_csv(self.save_path.replace('_summary.csv', '_summary_best.csv'), index=False)
 
-def contrastive_loss(h, labels, margin=2.0):
-    dist = torch.cdist(h, h, p=2)
-    same = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
-    pos = dist * same
-    neg = (margin - dist) * (1 - same)
-    neg = torch.clamp(neg, min=0)
-    loss = pos.mean() + neg.mean()
-    return loss
 
 
 class Trainer:
@@ -302,7 +294,6 @@ class Trainer:
             logits = self.model(batch)
             
             loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
-            #loss_cl = contrastive_loss(self.model.concat_embed, label.view(-1).to(self.device))
             loss = loss_bce #+ 0.01 * loss_cl 
             self.optimizer.zero_grad()
             loss.backward()
@@ -355,7 +346,6 @@ class Trainer:
                 logits = self.model(batch)
 
                 loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
-                #loss_cl = contrastive_loss(self.model.concat_embed, label.view(-1).to(self.device))
                 val_loss += loss_bce.item() #+ 0.01 * loss_cl.item()
 
                 probs = torch.sigmoid(logits).detach().cpu()

@@ -381,9 +381,6 @@ class ChannelsGraph:
 
         log.debug(f"Channel 1 graphs: {self.ch1[:2]} ...")  # Show first 2 graphs
         log.debug(f"Channel 2 graphs: {self.ch2[:2]} ...")
-        # Assign labels to each graph
-        #self.ch1_graphs = next((g.update({'y': y}) for g, y in zip(self.ch1_graphs, self.y_tensor)), None)
-        #self.ch2_graphs = next((g.update({'y': y}) for g, y in zip(self.ch2_graphs, self.y_tensor)), None)
 
     #-----------Graph Featurize----------
     def to_minimal(self, g: Data) -> Data:
@@ -392,8 +389,10 @@ class ChannelsGraph:
             x = g[self.embed_method]
         else:
             raise ValueError(f"Graph does not have attribute '{self.embed_method}'")
-        
-        return Data(x=torch.as_tensor(x), edge_index=g.edge_index)
+
+        return Data(x=torch.as_tensor(x), edge_index=g.edge_index, 
+                    chain_id=g.chain_id, resid=g.residue_number, 
+                    resname=g.residue_name, name=g.name) #TODO structural information can be add here
 
     # ---------- Getters ----------
     def get_str_channel(self, name: str):
@@ -426,6 +425,8 @@ class ChannelsPairDataset(Dataset_n):
         ch1_name: str = "ch1",
         ch2_name: str = "ch2",
         y_dtype: torch.dtype = torch.float32,
+        mask_between: bool = True,
+        mask_chain_map: dict = {'A': True, 'C': False, 'D': False, 'E': False}
     ):
         assert len(ch1_graphs) == len(ch2_graphs) == len(ids), "Channel lengths must match"
         self.ch1 = list(ch1_graphs)
@@ -433,6 +434,9 @@ class ChannelsPairDataset(Dataset_n):
         self.n = len(self.ch1)
         self.ch1_name, self.ch2_name = ch1_name, ch2_name
         self.ids = ids
+
+        self.mask_chain_map = mask_chain_map
+        self.mask_between = mask_between
 
         if isinstance(labels, torch.Tensor):
             assert labels.shape[0] == self.n
@@ -478,15 +482,31 @@ class ChannelsPairDataset(Dataset_n):
 
         hd = HeteroData()
         hd['id'] = self.ids[idx]
+
         # Node stores: only x
         hd[self.ch1_name].x = g1.x
+        hd[self.ch1_name].resid = g1.resid
+        hd[self.ch1_name].resname = g1.resname
         hd[self.ch2_name].x = g2.x
+        hd[self.ch2_name].resid = g2.resid
+        hd[self.ch2_name].resname = g2.resname
 
         # Edge stores: edge_index (add edge_attr later if needed)
         et1 = (self.ch1_name, "intra", self.ch1_name)
         et2 = (self.ch2_name, "intra", self.ch2_name)
         hd[et1].edge_index = g1.edge_index
         hd[et2].edge_index = g2.edge_index
+
+        # Attention Mask between channels -> using chain_id
+        if self.mask_between:
+            for g in [g1, g2]:
+                g.mask = torch.tensor(
+                    [int(self.mask_chain_map.get(str(cid), 0)) for cid in g.chain_id],
+                    dtype=torch.bool
+                )
+
+            hd[self.ch1_name].attmask = g1.mask[:, None] | g2.mask[None, :]
+            hd[self.ch2_name].attmask = g2.mask[:, None] | g1.mask[None, :]
 
         # Graph-level label
         hd["y"] = y

@@ -25,18 +25,6 @@ from graphein.protein.edges.distance import (add_peptide_bonds,
 import logging
 log = logging.getLogger(__name__)
 
-
-
-#@register("edges.add_distance_custom")
-#def add_distance_custom(G: nx.Graph) -> nx.Graph:
-#    """
-#    Add edges between residues in the graph.
-#    """
-#    nodes = [n for n in G.nodes]
-#    [G.add_edge(x, y, kind={"distance"}) for i, x in enumerate(nodes) for j, y in enumerate(nodes) if ]
-#    return G
-
-
 @register("graph.graphein")
 class GrapheinGeneratorRes:
 
@@ -192,14 +180,14 @@ class GrapheinToChannels:
         self.embed_method = embed_method
 
         # Keep track of which columns to convert
-        base_columns = ["coords", "distance", "edge_index", "chain_id"] 
+        base_columns = ["coords", "distance", "edge_index", "chain_id", "residue_number", "residue_name"] #TODO we can use this stage to get mask matrix based on structural info
         node_columns = self.cfg.node_params if self.cfg.node_params else []
         if self.embed_method not in node_columns:
             node_columns.append(self.embed_method)
         edge_columns = self.cfg.edge_params if self.cfg.edge_params else []
         graph_columns = self.cfg.graph_params if self.cfg.graph_params else []
         self.columns = list(set(base_columns + node_columns + edge_columns + graph_columns))
-        
+
         # Initialize the convertor
         self._convertor  = GraphFormatConvertor(src_format="nx", dst_format="pyg", verbose="gnn", 
                                                 columns = self.columns)
@@ -218,8 +206,10 @@ class GrapheinToChannels:
         seq_data_channels = {}
         for ch_name in sample.channels:
             ch_graph = sample.getgraph(ch_name)
+
             pyg_data = self._convertor(ch_graph)  # -> torch_geometric.data.Data
             pyg_data.name = sample.id  # keep track of the sample ID
+
             pyg_data_channels[ch_name] = pyg_data
 
             sequences = sample.getseq(channel=ch_name)

@@ -329,7 +329,7 @@ class CrossAttentionGIN(nn.Module):
         h = self.lin(h)
         return h
 
-class CrossAttentionGATGIN(nn.Module):
+class CrossAttentionNodeGIN(nn.Module):
     def __init__(self, cfg: TrainConfigs, node_features_len: int):
         super().__init__()
         
@@ -338,50 +338,12 @@ class CrossAttentionGATGIN(nn.Module):
         self.dropout = cfg.model_params.get('dropout', 0.2)  # dropout rate
         self.ch_names = cfg.channels  # channel names, e.g., ['TCR', 'pMHC']
 
-        self.encoder_A = GATGINEncoder(node_features_len, out_dim)
-        self.encoder_B = GATGINEncoder(node_features_len, out_dim)
+        self.encoder_A = GINEncoder(node_features_len, out_dim)
+        self.encoder_B = GINEncoder(node_features_len, out_dim)
 
-        self.cross_attention = CrossAttentionBlock(out_dim, dropout=self.dropout)
-        
-        self.linear_A = nn.Sequential(
-            nn.Linear(out_dim, out_dim),
-            nn.ReLU()
-        )
-        
-        self.linear_B = nn.Sequential(
-            nn.Linear(out_dim, out_dim),
-            nn.ReLU()
-        )
-
-        self.lin = nn.Linear(out_dim*2, 1)
-
-    def forward(self, data):
-        name1 = self.ch_names[0]
-        name2 = self.ch_names[1]
-
-        ch1_x, ch1_batch = data[name1].x.float(), data[name1].batch
-        ch1_edge_index = data[(name1,"intra",name1)].edge_index.long()
-
-        ch2_x, ch2_batch = data[name2].x.float(), data[name2].batch
-        ch2_edge_index = data[(name2,"intra",name2)].edge_index.long()
-
-        hA1 = self.encoder_A(ch1_x, ch1_edge_index, ch1_batch)
-        hB1 = self.encoder_B(ch2_x, ch2_edge_index, ch2_batch)
-
-        # Bidirectional cross-attention
-        hA_att = self.cross_attention(hA1, hB1)
-        hB_att = self.cross_attention(hB1, hA1)
-
-        # Combine attended embeddings
-        hA_final = self.linear_A(hA1 + hA_att)
-        hB_final = self.linear_B(hB1 + hB_att)
-
-        # Concatenate and classify
-        self.concat_embed = torch.cat([hA_final, hB_final], dim=-1)
-
-        h = F.dropout(self.concat_embed, p=self.dropout, training=self.training)
-        h = self.lin(h)
-        return h
+        self.cross_attention = CrossAttentionBlock(out_dim * 2, dropout=self.dropout)
+    
+    
 
 class MultiGCN(nn.Module):
     """
