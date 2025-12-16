@@ -1,17 +1,28 @@
-# Registry for components
-# This registry is used to keep track of various components in the system
+import warnings
+from typing import Any, Dict
 
-_REG = {}
+_REGISTRY: Dict[str, Any] = {}
 
-def register(key):
-    def deco(cls_or_fn):
-        if key in _REG:
-            raise KeyError(f"Duplicate registry key: {key}")
-        _REG[key] = cls_or_fn
-        return cls_or_fn
+
+def register(key: str, *, warn_if_overwrite: bool = True):
+    """
+    Register an object under a string key.
+    Safe to use with IPython autoreload: re-imports will overwrite.
+    """
+    def deco(obj):
+        if key in _REGISTRY and warn_if_overwrite:
+            warnings.warn(
+                f"Overwriting existing registry key {key}: "
+                f"{_REGISTRY[key]} -> {obj}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        _REGISTRY[key] = obj
+        return obj
+
     return deco
 
 def get(key):
-    if key not in _REG:
-        raise KeyError(f"Unknown component: {key}\nAvailable: {list(_REG)}")
-    return _REG[key]
+    if key not in _REGISTRY:
+        raise KeyError(f"Unknown component: {key}\nAvailable: {list(_REGISTRY)}")
+    return _REGISTRY[key]

@@ -25,7 +25,7 @@ def get_accuracy(y_true, y_pred, threshold):
     return correct / float(len(y_true)) * 100.0
 
 
-def get_auc(y_true, y_pred):
+def get_auc01(y_true, y_pred):
     """
     Calculate the AUC (FPR ≤ 0.1) and average precision score.
 
@@ -36,6 +36,20 @@ def get_auc(y_true, y_pred):
         tuple: AUC score and average precision score.
     """
     auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+    ap = average_precision_score(y_true, y_pred)
+    return auc, ap
+
+def get_auc(y_true, y_pred):
+    """
+    Calculate the AUC.
+
+    Args:
+        y_true (array-like): True labels.
+        y_pred (array-like): Predicted probabilities.
+    Returns:
+        float: AUC score.
+    """
+    auc = roc_auc_score(y_true, y_pred)
     ap = average_precision_score(y_true, y_pred)
     return auc, ap
 

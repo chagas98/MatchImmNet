@@ -2,7 +2,7 @@
 
 # local
 from pyGeoMatchImm.metrics.train_metrics import (get_accuracy, 
-                                                 get_auc, get_conf_matrix, 
+                                                 get_auc01, get_auc, get_conf_matrix, 
                                                  plot_precision_recall_curve,
                                                  plot_roc_curve,
                                                  plot_loss_curve_logocv)
@@ -33,7 +33,8 @@ torch.manual_seed(42); np.random.seed(42)
 
 def compute_metrics(val_results, val_idx, train_idx, peptide, best_epoch=None):
             # Compute metrics
-        auc01, ap = get_auc(val_results['labels'], val_results['predictions'])
+        auc01, ap = get_auc01(val_results['labels'], val_results['predictions'])
+        auc, _ = get_auc(val_results['labels'], val_results['predictions'])
         acc = get_accuracy(val_results['labels'], val_results['predictions'], 0.5)
         tn, fp, fn, tp, precision, recall = get_conf_matrix(val_results['labels'], (val_results['predictions'] >= 0.5).astype(int))
 
@@ -45,6 +46,7 @@ def compute_metrics(val_results, val_idx, train_idx, peptide, best_epoch=None):
                        'predictions': val_results['predictions']}
 
         summary_results = {'peptide': peptide,
+                            'auc': auc,
                             'auc01': auc01,
                             'ap': ap,
                             'acc': acc,
@@ -149,6 +151,7 @@ class CrossValidator:
         self.summary_results_best = []
         self.raw_results_best = []
         self.losses = {}
+
         for train_idx, val_idx, pep in self._topk_peptides_split():
 
             log.info(f'Starting peptide {pep} with {len(val_idx)} test samples and {len(train_idx)} train samples...')
@@ -232,14 +235,6 @@ class CrossValidator:
         self.summary_results_best = pd.DataFrame(self.summary_results_best)
         self.summary_results_best.to_csv(self.save_path.replace('_summary.csv', '_summary_best.csv'), index=False)
 
-def contrastive_loss(h, labels, margin=2.0):
-    dist = torch.cdist(h, h, p=2)
-    same = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
-    pos = dist * same
-    neg = (margin - dist) * (1 - same)
-    neg = torch.clamp(neg, min=0)
-    loss = pos.mean() + neg.mean()
-    return loss
 
 
 class Trainer:
@@ -283,10 +278,13 @@ class Trainer:
         log.info(f'Validation on {len(self.valloader.dataset)} samples.....')
 
     def train_one_epoch(self, epoch):
+
         self.model.train()
+        torch.set_grad_enabled(True)
+        
         predictions_tr = torch.Tensor()
         labels_tr = torch.Tensor()
-        
+
         embeddings = {
             'concat_embed': [],
             'posmlp': [],
@@ -294,7 +292,9 @@ class Trainer:
             'probs': []
         }
         all_ids = []
+
         for count, batch in enumerate(self.trainloader):
+
             label = batch["y"]
             all_ids.extend(batch["id"])
             batch = batch.to(self.device)
@@ -302,7 +302,6 @@ class Trainer:
             logits = self.model(batch)
             
             loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
-            #loss_cl = contrastive_loss(self.model.concat_embed, label.view(-1).to(self.device))
             loss = loss_bce #+ 0.01 * loss_cl 
             self.optimizer.zero_grad()
             loss.backward()
@@ -355,7 +354,6 @@ class Trainer:
                 logits = self.model(batch)
 
                 loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
-                #loss_cl = contrastive_loss(self.model.concat_embed, label.view(-1).to(self.device))
                 val_loss += loss_bce.item() #+ 0.01 * loss_cl.item()
 
                 probs = torch.sigmoid(logits).detach().cpu()
@@ -384,7 +382,9 @@ class Trainer:
     def fit(self, save_path=None):
         
         loss_epochs = []
+
         for epoch in range(1, self.num_epochs+1):
+
             train_loss, train_accuracy = self.train_one_epoch(epoch)
             val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
 

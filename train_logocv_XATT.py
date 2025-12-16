@@ -3,14 +3,7 @@
 from pyGeoMatchImm.data.datasets import TCRpMHCDataset, ChannelsPairDataset, ChannelsGraph
 from pyGeoMatchImm.train.train import CrossValidator
 from pyGeoMatchImm.models.Jha import Jha_GCN, Jha_GAT
-from pyGeoMatchImm.models.models import (CrossAttentionGCN, 
-                                         CrossAttentionGAT, 
-                                         CrossAttentionGIN, 
-                                         CrossAttentionNodesGIN,
-                                         DoubleCrossAttentionNodesGIN,
-                                            MultiGCN,   
-                                            MultiGAT,
-                                            MultiGIN) 
+from pyGeoMatchImm.models.models import XATTGraph 
 from pyGeoMatchImm.utils.utils import validate_data
 from pyGeoMatchImm.metrics.train_metrics import (plot_precision_recall_curve,
                                                  plot_roc_curve,
@@ -26,6 +19,8 @@ from torch_geometric.data import Data, Batch
 import os
 import json
 import logging as log
+from itertools import product
+from copy import deepcopy
 
 # logger
 log.basicConfig(level=log.INFO)
@@ -110,96 +105,106 @@ config = {
 dataset = TCRpMHCDataset("data/02-processed/tcrpMHC_combined_train_data.csv", config=config)
 
 
-models_dict = {
-    "jha_gcn": Jha_GCN,
-    "jha_gat": Jha_GAT,
-    "cagcn": CrossAttentionGCN,
-    "cagat": CrossAttentionGAT,
-    "cagin": CrossAttentionGIN,
-    "cangin": CrossAttentionNodesGIN,
-    "doublecagin": DoubleCrossAttentionNodesGIN,
-    "multigcn": MultiGCN,
-    "multigat": MultiGAT,
-    "multigin": MultiGIN
-}
-
 print(f"Starting for loop over architectures and embedding methods...")
+for embed in config['embed_method']:
+    for graph_enc, cross_nodes, cross_embed in product(
+        ["GIN", "GAT", "GCN"], [True, False], [True, False]):
 
-for j, embed in enumerate(config['embed_method']):
-    for i, arch in enumerate(["doublecagin"]):
+        # prepare per-run config (do not mutate original)
+        run_cfg = deepcopy(config)
+        run_cfg.update({
+        "graph_encoder": graph_enc,
+        "cross_nodes": cross_nodes,
+        "cross_embed": cross_embed
+        })
 
-        #if embed == 'esm3' and arch in ["cagin", "multigin"]:
-        #    log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
-        #    continue
+        arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
+        log.info("Running architecture: %s", arch)
+        log.info("Using embedding method: %s", embed)
+        log.info("Cross nodes: %s, Cross embed: %s", cross_nodes, cross_embed)
 
-        model_class = models_dict[arch]
-
-        log.info(f"Running architecture: {arch}")
-        log.info(f"Using embedding method: {embed}")
-
+        # embed-specific training params
         if embed == "atchley":
-            config["train_params"]['norm'] = True
-            config["train_params"]['out_channels'] = 16
+            run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=16)
         else:
-            config["train_params"]['norm'] = False
-            config["train_params"]['out_channels'] = 128
+            run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=128)
 
+        # save dir per-run
+        dropout = int(run_cfg["model_params"].get("dropout", 0) * 10)
+        save_dir = f"developments/test_xatt/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
+        run_cfg["save_dir"] = save_dir
+        os.makedirs(save_dir, exist_ok=True)
+        basename = save_dir.split("/")[-1]
+        
+        if basename in ["GIN_cn1_ce1_neg5_esm3_dp03", "GIN_cn1_ce0_neg5_esm3_dp03"]:
+            log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
+            continue
 
-        save_dir = f"./{arch}_neg{config['negative_prop']}_{embed}_dp0{int(config['model_params']['dropout']*10)}"
-        config["save_dir"] = save_dir
+        try:
+            channels = ChannelsGraph(dataset, config=run_cfg, embed_method=embed)
+            peptides = channels.get_seq_chain(name="pMHC", chain="C")
 
-        channels = ChannelsGraph(dataset, config=config, embed_method=embed)
-        peptides = channels.get_seq_chain(name="pMHC", chain="C")
-
-
-        ds = ChannelsPairDataset(
+            ds = ChannelsPairDataset(
                 ids=channels.ids,
                 ch1_graphs=channels.ch1,
                 ch2_graphs=channels.ch2,
-                labels=channels.get_labels(),   # or channels.y_tensor
+                labels=channels.get_labels(),
                 ch1_name=channels.channel_names[0],
                 ch2_name=channels.channel_names[1],
             )
 
-        validate_data(train_data, dict_lists={
-            "id": channels.ids,
-            "epitope": peptides,
-            "label": channels.get_labels(),
-            "TRA": channels.get_seq_chain(name="TCR", chain="D"),
-            "TRB": channels.get_seq_chain(name="TCR", chain="E")
-        },
-            cols_to_check=["epitope", "label", "TRA", "TRB"])
+            validate_data(train_data, dict_lists={
+                "id": channels.ids,
+                "epitope": peptides,
+                "label": channels.get_labels(),
+                "TRA": channels.get_seq_chain(name="TCR", chain="D"),
+                "TRB": channels.get_seq_chain(name="TCR", chain="E")
+            }, cols_to_check=["epitope", "label", "TRA", "TRB"])
+
+            cv = CrossValidator(
+                model_class=XATTGraph,
+                dataset=ds,
+                device=device,
+                peptides=peptides,
+                configs=run_cfg
+            )
+
+            cv.run()
+
+            with open(os.path.join(save_dir, "config.json"), "w") as fp:
+                json.dump(run_cfg, fp, indent=4)
+
+            plot_precision_recall_curve(cv.raw_results['labels'],
+                            cv.raw_results['predictions'],
+                            save_dir)
+
+            plot_roc_curve(cv.raw_results['labels'],
+                    cv.raw_results['predictions'],
+                    save_dir)
+
+            plot_loss_curve_logocv(cv.losses, save_dir=save_dir)
+
+        except Exception:
+            log.exception("Run failed for %s with embed=%s", arch, embed)
         
-        cv = CrossValidator(model_class=model_class,
-                            dataset=ds, 
-                            device=device,
-                            peptides=peptides,
-                            configs=config)
+        finally:
+            # reset pytorch & free memory
+            try:
+                torch.cuda.empty_cache()
+                torch.cuda.reset_peak_memory_stats()
+            except Exception:
+                pass
 
-        cv.run()
-
-
-        json.dump(config, open(f"./{save_dir}/config.json", "w"), indent=4)
-
-        plot_precision_recall_curve(cv.raw_results['labels'], 
-                                    cv.raw_results['predictions'], 
-                                    save_dir)
-
-        plot_roc_curve(cv.raw_results['labels'],
-                        cv.raw_results['predictions'],
-                        save_dir)
-
-        plot_loss_curve_logocv(cv.losses, save_dir=save_dir)
-
-        # reset pytorch
-        torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
-
-        # clean cache, memory release
-        del channels
-        del ds
-        del cv
-        
+            for obj in ("channels", "ds", "cv"):
+                if obj in locals():
+                    try:
+                        del globals()[obj]
+                    except Exception:
+                        try:
+                            del locals()[obj]
+                        except Exception:
+                            pass
+                
 
 
 if __name__ == "__main__":
