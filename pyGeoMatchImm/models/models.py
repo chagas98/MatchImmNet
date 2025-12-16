@@ -441,7 +441,11 @@ class CrossAttentionNodesGIN(nn.Module):
         h = self.lin(h)
         return h
 
+<<<<<<< HEAD
 class DoubleCrossAttentionNodesGIN(nn.Module):
+=======
+class CrossAttentionNodeGIN(nn.Module):
+>>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
     def __init__(self, cfg: TrainConfigs, node_features_len: int):
         super().__init__()
         
@@ -453,6 +457,7 @@ class DoubleCrossAttentionNodesGIN(nn.Module):
         self.encoder_A = GINEncoder(node_features_len, out_dim)
         self.encoder_B = GINEncoder(node_features_len, out_dim)
 
+<<<<<<< HEAD
         self.cross_nodes_attention = CrossAttentionNodesBlock(out_dim, dropout=self.dropout)
         self.cross_attention = CrossAttentionBlock(out_dim * 2, dropout=self.dropout)
 
@@ -519,6 +524,10 @@ class DoubleCrossAttentionNodesGIN(nn.Module):
         h = F.dropout(self.concat_embed, p=self.dropout, training=self.training)
         h = self.lin(h)
         return h
+=======
+        self.cross_attention = CrossAttentionBlock(out_dim * 2, dropout=self.dropout)
+    
+>>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
     
 
 class XATTGraph(nn.Module):

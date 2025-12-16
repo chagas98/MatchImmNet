@@ -428,7 +428,11 @@ class ChannelsPairDataset(Dataset_n):
         ch2_name: str = "ch2",
         y_dtype: torch.dtype = torch.float32,
         mask_between: bool = True,
+<<<<<<< HEAD
         mask_chain_map: dict = {'A': False, 'C': True, 'D': True, 'E': True}
+=======
+        mask_chain_map: dict = {'A': True, 'C': False, 'D': False, 'E': False}
+>>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
     ):
         assert len(ch1_graphs) == len(ch2_graphs) == len(ids), "Channel lengths must match"
         self.ch1 = list(ch1_graphs)
@@ -489,11 +493,17 @@ class ChannelsPairDataset(Dataset_n):
         hd[self.ch1_name].x = g1.x
         hd[self.ch1_name].resid = g1.resid
         hd[self.ch1_name].resname = g1.resname
+<<<<<<< HEAD
         hd[self.ch1_name].chain_id = g1.chain_id
         hd[self.ch2_name].x = g2.x
         hd[self.ch2_name].resid = g2.resid
         hd[self.ch2_name].resname = g2.resname
         hd[self.ch2_name].chain_id = g2.chain_id
+=======
+        hd[self.ch2_name].x = g2.x
+        hd[self.ch2_name].resid = g2.resid
+        hd[self.ch2_name].resname = g2.resname
+>>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
 
         # Edge stores: edge_index (add edge_attr later if needed)
         et1 = (self.ch1_name, "intra", self.ch1_name)
@@ -503,13 +513,24 @@ class ChannelsPairDataset(Dataset_n):
 
         # Attention Mask between channels -> using chain_id
         if self.mask_between:
+<<<<<<< HEAD
             for g, channel in zip([g1, g2], [self.ch1_name, self.ch2_name]):
 
                 hd[channel].mask = torch.tensor(
+=======
+            for g in [g1, g2]:
+                g.mask = torch.tensor(
+>>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
                     [int(self.mask_chain_map.get(str(cid), 0)) for cid in g.chain_id],
                     dtype=torch.bool
                 )
 
+<<<<<<< HEAD
+=======
+            hd[self.ch1_name].attmask = g1.mask[:, None] | g2.mask[None, :]
+            hd[self.ch2_name].attmask = g2.mask[:, None] | g1.mask[None, :]
+
+>>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
         # Graph-level label
         hd["y"] = y
 
