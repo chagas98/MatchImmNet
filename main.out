@@ -1,12 +1,12 @@
 nohup: ignoring input
 INFO:pyGeoMatchImm.data.datasets:Creating Dataset...
 
-INFO:pyGeoMatchImm.data.datasets:Number of samples: 983
+INFO:pyGeoMatchImm.data.datasets:Number of samples: 1674
 INFO:pyGeoMatchImm.data.datasets:PDBDataset initialized
 INFO:pyGeoMatchImm.data.datasets:
 Creating dataset...
 
-INFO:pyGeoMatchImm.data.datasets:Number of samples: 983
+INFO:pyGeoMatchImm.data.datasets:Number of samples: 1674
 INFO:pyGeoMatchImm.data.datasets:Annotations:                                       {'TCR': {'TRA': 'D', 'TRB': 'E'}, 'pMHC': {'epitope': 'C', 'MHCseq': 'A'}}                      {'TCR': 'filepath_a', 'pMHC': 'filepath_b'}                           {'A': True, 'C': False, 'D': True, 'E': True}
 INFO:pyGeoMatchImm.data.datasets:
 Building Pairing samples based on channels...
@@ -15,7 +15,7 @@ INFO:pyGeoMatchImm.data.datasets:
 Parsing structures...
 
 INFO:pyGeoMatchImm.utils.utils:
-Run function: <pyGeoMatchImm.data.parser.StructureParser object at 0x71183e79f730>
+Run function: <pyGeoMatchImm.data.parser.StructureParser object at 0x719138fb1780>
 INFO:pyGeoMatchImm.utils.utils:Using 25 CPU cores for multiprocessing.
 
 Using device: cuda
@@ -35,7 +35,17 @@ Using device: cuda
 4  VDJdb53  ...  /home/samuel.assis/MatchImm/TCRpMHCPred/runs/v...
 
 [5 rows x 23 columns]
-Final training data size: (983, 18)
+       id  ...                                         filepath_b
+0  VDJdb2  ...  /home/samuel.assis/MatchImm/TCRpMHCPred/runs/v...
+1  VDJdb4  ...  /home/samuel.assis/MatchImm/TCRpMHCPred/runs/v...
+2  VDJdb5  ...  /home/samuel.assis/MatchImm/TCRpMHCPred/runs/v...
+3  VDJdb6  ...  /home/samuel.assis/MatchImm/TCRpMHCPred/runs/v...
+4  VDJdb7  ...  /home/samuel.assis/MatchImm/TCRpMHCPred/runs/v...
+
+[5 rows x 23 columns]
+Final AlphaFold training data size: (1473, 24)
+TCR3D training data size after removing overlapping epitopes: (209, 18)
+Final training data size: (1674, 18)
 Initializing TCRpMHCDataset...
 /home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/MDAnalysis/coordinates/PDB.py:453: UserWarning: 1 A^3 CRYST1 record, this is usually a placeholder. Unit cell dimensions will be set to None.
   warnings.warn("1 A^3 CRYST1 record,"
@@ -97,7 +107,7 @@ INFO:pyGeoMatchImm.data.datasets:
 Generating graphs using graphein...
 
 INFO:pyGeoMatchImm.utils.utils:
-Run function: <pyGeoMatchImm.data.generators.graphein.GrapheinGeneratorRes object at 0x71183e79f100>
+Run function: <pyGeoMatchImm.data.generators.graphein.GrapheinGeneratorRes object at 0x719138fb3670>
 INFO:pyGeoMatchImm.utils.utils:Using 25 CPU cores for multiprocessing.
 
 
@@ -1903,180 +1913,3 @@ INFO:pyGeoMatchImm.utils.utils:Using 25 CPU cores for multiprocessing.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-INFO:pyGeoMatchImm.data.datasets:
-Generate negatives
-
-INFO:pyGeoMatchImm.utils.negatives:Preparating data for chains Peptide chain C and  MHC chain A
-INFO:pyGeoMatchImm.utils.negatives:Data: 983 positive samples.
-WARNING:pyGeoMatchImm.utils.negatives:Not enough distinct TCRs for peptide LLFGYAVYV | PDB1qrn. Sampling from all available TCRs.
-INFO:pyGeoMatchImm.data.datasets:
-Combining positives and negatives...
-
-INFO:pyGeoMatchImm.data.datasets:Embedding sequences using ESM-3...
-Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
-WARNING:huggingface_hub._login:Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
-INFO:pyGeoMatchImm.embeddings.esm:Successfully logged in to Hugging Face!
-Fetching 22 files:   0%|          | 0/22 [00:00<?, ?it/s]Fetching 22 files: 100%|██████████| 22/22 [00:00<00:00, 105698.38it/s]

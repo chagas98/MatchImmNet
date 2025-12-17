@@ -231,8 +231,11 @@ class CrossAttentionGCN(nn.Module):
         ch2_x, ch2_batch = data[name2].x.float(), data[name2].batch
         ch2_edge_index = data[(name2,"intra",name2)].edge_index.long()
 
-        hA = self.encoder_A(ch1_x, ch1_edge_index, ch1_batch)
-        hB = self.encoder_B(ch2_x, ch2_edge_index, ch2_batch)
+        gA = self.encoder_A(ch1_x, ch1_edge_index, ch1_batch)
+        gB = self.encoder_B(ch2_x, ch2_edge_index, ch2_batch)
+
+        hA = global_mean_pool(gA, ch1_batch)
+        hB = global_mean_pool(gB, ch2_batch)
 
         # Bidirectional cross-attention
         hA_att = self.cross_attention(hA, hB)
@@ -243,7 +246,7 @@ class CrossAttentionGCN(nn.Module):
         #hB_final = self.linear_B(hB + hB_att)
 
         # Concatenate and classify
-        self.concat_embed = torch.cat([hA + hA_att, hB + hB_att], dim=-1)
+        self.concat_embed = torch.cat([hA_att, hB_att], dim=-1)
 
         h = F.dropout(self.concat_embed, p=self.dropout, training=self.training)
         h = self.lin(h)
@@ -289,8 +292,11 @@ class CrossAttentionGAT(nn.Module):
 
         ch2_x, ch2_batch = data[name2].x.float(), data[name2].batch
         ch2_edge_index = data[(name2,"intra",name2)].edge_index.long()
-        hA = self.encoder_A(ch1_x, ch1_edge_index, ch1_batch)
-        hB = self.encoder_B(ch2_x, ch2_edge_index, ch2_batch)
+        gA = self.encoder_A(ch1_x, ch1_edge_index, ch1_batch)
+        gB = self.encoder_B(ch2_x, ch2_edge_index, ch2_batch)
+
+        hA = global_mean_pool(gA, ch1_batch)
+        hB = global_mean_pool(gB, ch2_batch)
 
         # Bidirectional cross-attention
         hA_att = self.cross_attention(hA, hB)
@@ -301,7 +307,7 @@ class CrossAttentionGAT(nn.Module):
         #hB_final = self.linear_B(hB + hB_att)
 
         # Concatenate and classify
-        self.concat_embed = torch.cat([hA + hA_att, hB + hB_att], dim=-1)
+        self.concat_embed = torch.cat([hA_att, hB_att], dim=-1)
 
         h = F.dropout(self.concat_embed, p=self.dropout, training=self.training)
         h = self.lin(h)
@@ -361,7 +367,7 @@ class CrossAttentionGIN(nn.Module):
         #hB_final = self.linear_B(hB1 + hB_att)
 
         # Concatenate and classify
-        self.concat_embed = torch.cat([hA + hA_att, hB + hB_att], dim=-1)
+        self.concat_embed = torch.cat([hA_att, hB_att], dim=-1)
 
         h = F.dropout(self.concat_embed, p=self.dropout, training=self.training)
         h = self.lin(h)
@@ -441,11 +447,7 @@ class CrossAttentionNodesGIN(nn.Module):
         h = self.lin(h)
         return h
 
-<<<<<<< HEAD
 class DoubleCrossAttentionNodesGIN(nn.Module):
-=======
-class CrossAttentionNodeGIN(nn.Module):
->>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
     def __init__(self, cfg: TrainConfigs, node_features_len: int):
         super().__init__()
         
@@ -457,7 +459,6 @@ class CrossAttentionNodeGIN(nn.Module):
         self.encoder_A = GINEncoder(node_features_len, out_dim)
         self.encoder_B = GINEncoder(node_features_len, out_dim)
 
-<<<<<<< HEAD
         self.cross_nodes_attention = CrossAttentionNodesBlock(out_dim, dropout=self.dropout)
         self.cross_attention = CrossAttentionBlock(out_dim * 2, dropout=self.dropout)
 
@@ -524,10 +525,6 @@ class CrossAttentionNodeGIN(nn.Module):
         h = F.dropout(self.concat_embed, p=self.dropout, training=self.training)
         h = self.lin(h)
         return h
-=======
-        self.cross_attention = CrossAttentionBlock(out_dim * 2, dropout=self.dropout)
-    
->>>>>>> bf61f9585ec9f1d4789371a937ce1410e1ff70e1
     
 
 class XATTGraph(nn.Module):
