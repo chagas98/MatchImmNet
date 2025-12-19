@@ -1,30 +1,24 @@
 #! /usr/bin/env python3
-import multiprocessing
+import multiprocessing as mp
 import pandas as pd
 import numpy as np
 from os import cpu_count
 import logging
 log = logging.getLogger(__name__)
 
-def multiproc(run_function, data):
-    """
-    Run in parallel using multiprocessing.
 
-    run_function: Function to run in parallel.
-    data: list of input data
-    """
-    
-    num_workers = max(1, int(0.9 * cpu_count()))
-    if num_workers > 25:
-        num_workers = 25
+def multiproc(run_function, data, num_workers=None):
+    if num_workers is None:
+        num_workers = min(12, max(1, int(0.7 * mp.cpu_count())))
 
-    log.info(f"\nRun function: {run_function}")
-    log.info(f"Using {num_workers} CPU cores for multiprocessing.\n")
+    ctx = mp.get_context("fork")
+    data = list(data)
+    chunksize = max(1, len(data) // (num_workers * 8))
 
-    with multiprocessing.Pool() as pool:
-        
-        results = pool.map(run_function, list(data))
-    
+    results = []
+    with ctx.Pool(processes=num_workers, maxtasksperchild=50) as pool:
+        for out in pool.imap_unordered(run_function, data, chunksize=chunksize):
+            results.append(out)  # ideally: save to disk here, not append
     return results
 
 

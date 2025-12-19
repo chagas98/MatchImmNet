@@ -61,7 +61,7 @@ print(af_score3_data.head())
 
 # Load AF score 2 Data
 
-af_score2_data_path = "data/01-raw/AF_vdjdb_score2_wojust10x_20251217.csv"
+af_score2_data_path = "data/01-raw/AF_vdjdb_score2_wojust10x_20251219.csv"
 af_score2_data = pd.read_csv(af_score2_data_path)
 af_score2_data.rename(columns=map_cols, inplace=True)
 af_score2_data = af_score2_data[af_score2_data['filepath_a'].notna() & af_score2_data['filepath_b'].notna()]
@@ -82,7 +82,7 @@ select_columns = ['id', 'TRA', 'TRB', 'CDR1A', 'CDR2A', 'CDR3A', 'CDR1B', 'CDR2B
 train_data.drop_duplicates(subset=["TRA", "TRB", "epitope", "MHCseq"], inplace=True)
 train_data = train_data[select_columns].copy()
 train_data.to_csv("data/02-processed/tcrpMHC_combined_train_data.csv", index=False)
-print(f"Final training data size: {train_data.shape}")
+print(f"Positives training data size: {train_data.shape}")
 
 model_params = {
     "n_output": 1,
@@ -119,35 +119,43 @@ config = {
     "save_dir"        : ''
 }
 
-
 dataset = TCRpMHCDataset("data/02-processed/tcrpMHC_combined_train_data.csv", config=config)
 
+# Define models to train
 models_dict = {
-    "cangin": CrossAttentionNodesGIN,
-    "cagin": CrossAttentionGIN,
-    "cagat": CrossAttentionGAT,
-    "cagcn": CrossAttentionGCN}
+    "cangin": {'model_class': CrossAttentionNodesGIN}
+}
+
+# add architectures with cross attention variants
+for graph_enc, cross_nodes, cross_embed in product(
+    ["GIN", "GAT", "GCN"], [True, False], [True, False]):
+    arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
+
+    models_dict.update({arch: {'model_class': XATTGraph,
+                                'cross_embed': cross_embed,
+                                'cross_nodes': cross_nodes
+                                }})
 
 print(f"Starting for loop over architectures and embedding methods...")
 for embed in config['embed_method']:
-    #for graph_enc, cross_nodes, cross_embed in product(
-    #    ["GIN", "GAT", "GCN"], [True, False], [True, False]):
-
-    for arch, model_class in models_dict.items():
-
-        # prepare per-run config (do not mutate original)
+    for arch, model_cfg in models_dict.items():
+        
+        model_class = model_cfg['model_class']
+        
+        # prepare run config for each architecture
         run_cfg = deepcopy(config)
-        #run_cfg.update({
-        #"graph_encoder": graph_enc,
-        #"cross_nodes": cross_nodes,
-        #"cross_embed": cross_embed
-        #})
 
-        #arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
-
+        if model_class == XATTGraph:
+            cross_embed = model_cfg['cross_embed']
+            cross_nodes = model_cfg['cross_nodes']
+            run_cfg.update({
+                "graph_encoder": graph_enc,
+                "cross_nodes": cross_nodes,
+                "cross_embed": cross_embed
+                })
+            
         log.info("Running architecture: %s", arch)
         log.info("Using embedding method: %s", embed)
-        #log.info("Cross nodes: %s, Cross embed: %s", cross_nodes, cross_embed)
 
         # embed-specific training params
         if embed == "atchley":
@@ -157,7 +165,7 @@ for embed in config['embed_method']:
 
         # save dir per-run
         dropout = int(run_cfg["model_params"].get("dropout", 0) * 10)
-        save_dir = f"developments/increase_dataset/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
+        save_dir = f"developments/increase_dataset_1219_neg5/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
         run_cfg["save_dir"] = save_dir
         os.makedirs(save_dir, exist_ok=True)
         basename = save_dir.split("/")[-1]
