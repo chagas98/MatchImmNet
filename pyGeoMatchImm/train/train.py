@@ -367,7 +367,7 @@ class Trainer:
         val_loss /= len(self.valloader)
         accuracy = get_accuracy(labels, predictions, 0.5)
         #auc_per_peptide, macro_auc = get_auc_per_peptide(labels, predictions, self.peptides)
-        auc01, ap = get_auc(labels, predictions)
+        auc01, ap = get_auc01(labels, predictions)
 
         pred_results = {
             'ids': all_ids,

@@ -36,6 +36,7 @@ def validate_data(df: pd.DataFrame, dict_lists: dict, cols_to_check: list) -> bo
     df_lists = pd.DataFrame(dict_lists)
     df_lists.to_csv("temp_validation_lists.csv", index=False)
 
+    log.info("Starting data validation...")
     for col in cols_to_check:
         if col not in df.columns:
             log.error(f"Missing column in input dataframe: {col}")

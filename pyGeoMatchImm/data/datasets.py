@@ -27,7 +27,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 import pandas as pd
 import numpy as np
 import os
-from os import cpu_count
+from os import cpu_count, name
 from random import shuffle
 import logging
 log = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class BaseDataset:
     """
     def __init__(self, data_path: str, config: TrainConfigs):
         self.config    = config
-        self.df_input  = pd.read_csv(data_path)
+        self.df_input  = pd.read_csv(data_path).head(30)
 
         log.info('Creating Dataset...\n')
         log.info(f'Number of samples: {len(self.df_input)}')
@@ -343,46 +343,29 @@ class ChannelsGraph:
         results_topyg = multiproc(self._convertor, self._dataset)
 
         ids, labels, str_dataset, seq_dataset = zip(*results_topyg)
-        log.debug(f"IDs: {ids[:5]} ...")  # Show first 5 IDs
+        self._str_dataset = str_dataset   
+        self._seq_dataset = seq_dataset
+        self.channel_names = list(self.cfg.channels)
 
         # ---- IDs & labels (keep two forms) ----
         self.ids = list(ids)
         self.y_list = list(labels)  # for sklearn
         self.y_tensor = torch.tensor(self.y_list, dtype=torch.float32).view(-1, 1)  # for torch
 
-        # ---- Channels (make order deterministic) ----
-        # Ensure channels is a list/tuple in config OR freeze it here:
-        self.channel_names = list(self.cfg.channels) if isinstance(self.cfg.channels, (list, tuple)) else None
-
-        # Build channel dictionaries
-        str_channels = {
-            name: [sample[name] for sample in str_dataset] for name in self.channel_names
-        }
-        seq_channels = {
-            name: [sample[name] for sample in seq_dataset] for name in self.channel_names
-        }
-
-        # Package 
-        self.loader_set = ChannelsInput(
-            ids=self.ids,
-            labels=self.y_list,
-            struct_channels=str_channels,
-            seq_channels=seq_channels
-        )
-
         # Pick first two structural channels deterministically
         assert len(self.channel_names) >= 2, "Need at least two channels"
 
-        # Extract graphs and featurize
-        self.ch1_all = self.loader_set.struct_channels[self.channel_names[0]]
-        self.ch2_all = self.loader_set.struct_channels[self.channel_names[1]]
+        ch1_name, ch2_name = self.channel_names[:2]
 
-        self.ch1 = [self.to_minimal(g) for g in self.ch1_all]
-        self.ch2 = [self.to_minimal(g) for g in self.ch2_all]
+        self.ch1 = (self.to_minimal(g) if g is not None else None
+                    for g in self.iter_channel(self._str_dataset, ch1_name))
+        self.ch2 = (self.to_minimal(g) if g is not None else None
+                    for g in self.iter_channel(self._str_dataset, ch2_name))
         self.ids = list(ids)
 
-        log.debug(f"Channel 1 graphs: {self.ch1[:2]} ...")  # Show first 2 graphs
-        log.debug(f"Channel 2 graphs: {self.ch2[:2]} ...")
+    @staticmethod
+    def iter_channel(dataset, key):
+        return (sample.get(key, None) for sample in dataset)
 
     #-----------Graph Featurize----------
     def to_minimal(self, g: Data) -> Data:
@@ -398,14 +381,13 @@ class ChannelsGraph:
 
     # ---------- Getters ----------
     def get_str_channel(self, name: str):
-        return self.loader_set.struct_channels.get(name)
+        return self.iter_channel(self._str_dataset, name) # create a NEW iterator, don’t reuse a stored generator
 
     def get_seq_channel(self, name: str):
-        return self.loader_set.seq_channels.get(name)
+        return self.iter_channel(self._seq_dataset, name) # create a NEW iterator, don’t reuse a stored generator
 
     def get_seq_chain(self, name: str, chain: str):
-        seqs = self.get_seq_channel(name)
-        return [s.get(chain) for s in seqs] if seqs else None
+        return [(s.get(chain) if s is not None else None) for s in self.get_seq_channel(name)]
 
     def get_labels(self): 
         return self.y_list
@@ -430,7 +412,6 @@ class ChannelsPairDataset(Dataset_n):
         mask_between: bool = True,
         mask_chain_map: dict = {'A': False, 'C': True, 'D': True, 'E': True}
     ):
-        assert len(ch1_graphs) == len(ch2_graphs) == len(ids), "Channel lengths must match"
         self.ch1 = list(ch1_graphs)
         self.ch2 = list(ch2_graphs)
         self.n = len(self.ch1)
@@ -440,6 +421,8 @@ class ChannelsPairDataset(Dataset_n):
         self.mask_chain_map = mask_chain_map
         self.mask_between = mask_between
 
+        #assert len(self.ch1) == len(self.ch2) == len(ids), "Channel lengths must match"
+        
         if isinstance(labels, torch.Tensor):
             assert labels.shape[0] == self.n
             self.y = labels.reshape(-1, 1).to(y_dtype)

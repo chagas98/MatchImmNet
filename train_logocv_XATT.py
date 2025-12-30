@@ -29,7 +29,7 @@ from copy import deepcopy
 
 # logger
 log.basicConfig(level=log.INFO)
-log.getLogger("pyGeoMatchImm").setLevel(log.INFO)
+log.getLogger("pyGeoMatchImm").setLevel(log.DEBUG)
 log.getLogger("MDAnalysis").setLevel(log.WARNING)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -61,7 +61,7 @@ print(af_score3_data.head())
 
 # Load AF score 2 Data
 
-af_score2_data_path = "data/01-raw/AF_vdjdb_score2_wojust10x_20251219.csv"
+af_score2_data_path = "data/01-raw/AF_vdjdb_score2_wojust10x_20251217.csv"
 af_score2_data = pd.read_csv(af_score2_data_path)
 af_score2_data.rename(columns=map_cols, inplace=True)
 af_score2_data = af_score2_data[af_score2_data['filepath_a'].notna() & af_score2_data['filepath_b'].notna()]
@@ -94,7 +94,7 @@ train_params = {
     "learning_rate"   : 0.0001,
     #"milestones"      : [1, 5],
     #"gamma"           : 0.5,
-    "num_epochs"      : 60,
+    "num_epochs"      : 100,
     "batch_size"      : 16,
     "pep_freq_range" : [0.005, 0.1],
     "k_top_peptides" : 10,
@@ -105,9 +105,9 @@ config = {
     "source"          : "pdb",
     "channels"        : ["TCR", "pMHC"],
     "pairing_method"  : "basic",
-    "embed_method"    : ["esm3", "atchley"],
+    "embed_method"    : ["esm3"],
     "graph_method"    : "graphein",
-    "negative_prop"   : 5,
+    "negative_prop"   : 3,
     "edge_params"     : ["distance_threshold"],
     "node_params"     : ["amino_acid_one_hot", "hbond_donors", "hbond_acceptors", "dssp_config"],
     "graph_params"    : ["rsa"],
@@ -128,7 +128,7 @@ models_dict = {
 
 # add architectures with cross attention variants
 for graph_enc, cross_nodes, cross_embed in product(
-    ["GIN", "GAT", "GCN"], [True, False], [True, False]):
+    ["GIN", "GCN", "GAT"], [True, False], [True, False]):
     arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
 
     models_dict.update({arch: {'model_class': XATTGraph,
@@ -165,7 +165,7 @@ for embed in config['embed_method']:
 
         # save dir per-run
         dropout = int(run_cfg["model_params"].get("dropout", 0) * 10)
-        save_dir = f"developments/increase_dataset_1219_neg5/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
+        save_dir = f"developments/increase_dataset_1217_neg3/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
         run_cfg["save_dir"] = save_dir
         os.makedirs(save_dir, exist_ok=True)
         basename = save_dir.split("/")[-1]

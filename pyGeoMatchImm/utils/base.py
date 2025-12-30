@@ -345,6 +345,6 @@ class SamplePair:
 class ChannelsInput:
     ids             : list[str]
     labels          : Optional[List[torch.tensor]] = None
-    struct_channels : dict[str, List[Dataset_n]] = field(default_factory=dict)
-    seq_channels    : dict[str, dict] = field(default_factory=dict)
+    struct_channels : dict[str, tuple] = field(default_factory=dict)
+    seq_channels    : dict[str, tuple] = field(default_factory=dict)
     
