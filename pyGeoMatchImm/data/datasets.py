@@ -38,7 +38,7 @@ class BaseDataset:
     """
     def __init__(self, data_path: str, config: TrainConfigs):
         self.config    = config
-        self.df_input  = pd.read_csv(data_path).head(30)
+        self.df_input  = pd.read_csv(data_path)
 
         log.info('Creating Dataset...\n')
         log.info(f'Number of samples: {len(self.df_input)}')
@@ -130,21 +130,17 @@ class TCRpMHCDataset:
         # Featurization
         self._dataset = self._graph_generator()
 
-        log.info(f"\nGenerate negatives\n")
-        self._dataset_neg = self._genNegatives()
+        log.info(f"\nGenerate negatives and combine with positives\n")
+        # Here self._dataset becomes CompleteDataset with positives and negatives
+        self._dataset = self._genNegatives()
 
-        log.info(f"\nCombining positives and negatives...\n")
-        self._dataset.extend(self._dataset_neg)
-        shuffle(self._dataset)
-
+        log.info(f"\nEmbedding sequences using methods: {self.cfg.embed_method}...\n")
         self._seq_embedder() # ESM embedder
 
         log.info(f"IDs: {[ds.id for ds in self._dataset]} ...")
         log.info(f"Total samples after adding negatives: {len(self._dataset)}"
                  f" (Positives: {sum(sp.label == 1 for sp in self._dataset)}, "
                  f"Negatives: {sum(sp.label == 0 for sp in self._dataset)})")
-        
-        #TODO: add option to shuffle dataset
         
         # fetchers
         log.info("\nFetching data...\n")
@@ -255,7 +251,8 @@ class TCRpMHCDataset:
 
         list_new_partial_tcrs = sampler.generate_negatives()
         sampler.build_neg_dataset(list_new_partial_tcrs)
-        return sampler.parse_df_to_sp()
+        sampler.parse_df_to_CompleteDataset()
+        return sampler.Dataset
 
     def _graph_generator(self):
         """ Generate graphs for the parsed samples. Apply multiprocessing."""

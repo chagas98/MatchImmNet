@@ -1,5 +1,5 @@
 from ..utils.registry import register
-from ..utils.base import PairsAnnotation, TrainConfigs, InputSequences, sSeq, sStruct, SamplePair, ChannelsInput
+from ..utils.base import PairsAnnotation, TrainConfigs, InputSequences, sSeq, sStruct, SamplePair, CompleteDataset
 from ..utils.base import _AHO_CDR_RANGES, _PAIRS_ANNOTATION
 
 import pandas as pd
@@ -128,34 +128,15 @@ class DistNegativeSampler:
 
         return self.new_dt_full_neg
 
-    def parse_df_to_sp(self):
+    def parse_df_to_CompleteDataset(self):
         """Create new negative samples (SamplePair) from the negative dataframe."""
-        self.neg_sample_pairs = []
-        for i, row in self.new_dt_full_neg.iterrows():
-            for sp in self.sample_pairs:
 
-                if sp.id == row['id_tcr']:
-                    channel1_struct = sp.getstruct(list(_PAIRS_ANNOTATION.keys())[0])
-                    channel1_seq = sp.getseq_channel(list(_PAIRS_ANNOTATION.keys())[0])
-
-                if sp.id == row['id_pmhc']:
-                    channel2_struct = sp.getstruct(list(_PAIRS_ANNOTATION.keys())[1])
-                    channel2_seq = sp.getseq_channel(list(_PAIRS_ANNOTATION.keys())[1])
-            
-            if channel1_struct is None or channel2_struct is None:
-                log.critical(f'Not possible get negative struct data for {row["id"]}. Skipping.')
-            
-            if channel1_seq is None or channel2_seq is None:
-                log.critical(f'Not possible get negative seq data for {row["id"]}. Skipping.')
-
-            new_sp = SamplePair(
-                id=row['id'],
-                channels=list(_PAIRS_ANNOTATION.keys()),
-                struct=[channel1_struct, channel2_struct],
-                seq=[channel1_seq, channel2_seq],
-                label=0
-            )
+        self.negative_pairs_by_id = tuple((self.new_dt_full_neg['id'].tolist(), 
+                                          self.new_dt_full_neg['id_tcr'].tolist(), 
+                                          self.new_dt_full_neg['id_pmhc'].tolist()))
         
-            self.neg_sample_pairs.append(new_sp)
+        self.Dataset = CompleteDataset(
+            negative_pairs_ids=self.negative_pairs_by_id,
+            positive_pairs=self.sample_pairs)
         
-        return self.neg_sample_pairs
+        

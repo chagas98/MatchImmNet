@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
+from random import shuffle
 from typing import Optional, Tuple, List, Union, Dict, Any
 from pydantic import BaseModel
 import pandas as pd
 import torch
 from torch.utils.data import Dataset as Dataset_n
+import logging
+log = logging.getLogger(__name__)
 
 _PAIRS_ANNOTATION = {
     'TCR'  : {'TRA'    : 'D', 'TRB'   : 'E'},
@@ -156,6 +159,9 @@ class TestConfigs(BaseModel):
 
 @dataclass(order=True, eq=True)
 class InputSequences:
+    '''
+    This function helps to store each row information from the input CSV file.
+    '''
     id             : str
     TRA            : str
     TRB            : str
@@ -224,6 +230,7 @@ class InputSequences:
 
 @dataclass
 class sSeq:
+    """Sequence info for the channel sample."""
     id           : str
     channel      : str
     chains       : Optional[List[str]] = field(default_factory=list)
@@ -259,7 +266,7 @@ class sSeq:
 
 @dataclass
 class sStruct:
-    """3D structure info for a complete TCR–pMHC sample."""
+    """3D structure info for the channel sample."""
     id        : str
     channel   : str
     chains    : List[str]
@@ -340,6 +347,87 @@ class SamplePair:
         else:
             raise ValueError(f"Channel {name} not found in sample {self.id}.")
         
+class CompleteDataset(torch.utils.data.Dataset):
+    def __init__(self, negative_pairs_ids: Tuple, positive_pairs: List[SamplePair]):
+        
+        # store datasets
+        neg_ids, neg_tcr_ids, neg_pmhc_ids = negative_pairs_ids
+        pos_ids = [sp.id for sp in positive_pairs]
+        
+        # combine negative and positive ids
+        all_ids = neg_ids + pos_ids
+        all_tcr_ids = neg_tcr_ids + pos_ids
+        all_pmhc_ids = neg_pmhc_ids + pos_ids
+        
+        # map positive ids to their indices for quick access
+        self.pos_id_to_idx = {s.id: i for i, s in enumerate(positive_pairs)}
+        self.positive_pairs_id = {s.id: s for s in positive_pairs}
+
+        # shuffle all ids together
+        to_shuffle_ids = list(zip(all_ids, all_tcr_ids, all_pmhc_ids))
+        shuffle(to_shuffle_ids)
+        self.all_ids, self.all_tcr_ids, self.all_pmhc_ids = zip(*to_shuffle_ids)
+
+        log.info(f"CompleteDataset initialized with {len(self.all_ids)} samples "
+                 f"({len(positive_pairs)} positives and {len(all_ids) - len(positive_pairs)} negatives).")
+        log.debug(f"All IDs sample: {self.all_ids[:5]}")
+        log.debug(f"TCR IDs sample: {self.all_tcr_ids[:5]}")
+        log.debug(f"pMHC IDs sample: {self.all_pmhc_ids[:5]}")
+        log.debug(f"{self.pos_id_to_idx.get(self.all_ids[0])}")
+        log.debug(f"pos_id_to_idx sample: {self.pos_id_to_idx}")
+
+    def __len__(self):
+        return len(self.all_ids)
+    
+    def __getitem__(self, idx):
+        
+        general_id = self.all_ids[idx]
+        tcr_id = self.all_tcr_ids[idx]
+        pmhc_id = self.all_pmhc_ids[idx]
+
+        log.debug(f"Fetching item at index {idx}: general_id={general_id}, tcr_id={tcr_id}, pmhc_id={pmhc_id}")
+        
+        # sanity check
+        if tcr_id == pmhc_id:
+            assert general_id == f'{tcr_id}', "Mismatch in sample IDs."
+        else:
+            assert general_id == f'{tcr_id}_{pmhc_id}', "Mismatch in negative sample IDs."
+
+        if tcr_id == pmhc_id:
+            label = 1
+        else:
+            label = 0
+
+        sp1 = self.positive_pairs_id.get(tcr_id)
+        sp2 = self.positive_pairs_id.get(pmhc_id)
+
+        if sp1 is None or sp2 is None:
+            raise ValueError(f"SamplePair not found for IDs: {tcr_id} or {pmhc_id}")
+        
+        ch1_key, ch2_key = list(_PAIRS_ANNOTATION.keys())[:2]
+
+        channel1_struct = sp1.getstruct(ch1_key)  # this is a reference to existing object
+        channel1_seq    = sp1.getseq_channel(ch1_key)
+
+        channel2_struct = sp2.getstruct(ch2_key)
+        channel2_seq    = sp2.getseq_channel(ch2_key)
+
+        return SamplePair(
+            id=general_id,
+            channels=list(_PAIRS_ANNOTATION.keys()),
+            struct=[channel1_struct, channel2_struct],
+            seq=[channel1_seq, channel2_seq],
+            label=label
+        )
+
+    def __iter__(self):
+        for idx in range(len(self)):
+            item = self[idx]
+            if item is None:
+                raise ValueError(f"SamplePair not found for index: {idx}")
+            yield item
+
+
 
 @dataclass(order=True)
 class ChannelsInput:

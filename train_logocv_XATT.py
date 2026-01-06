@@ -29,7 +29,7 @@ from copy import deepcopy
 
 # logger
 log.basicConfig(level=log.INFO)
-log.getLogger("pyGeoMatchImm").setLevel(log.DEBUG)
+log.getLogger("pyGeoMatchImm").setLevel(log.INFO)
 log.getLogger("MDAnalysis").setLevel(log.WARNING)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -94,7 +94,7 @@ train_params = {
     "learning_rate"   : 0.0001,
     #"milestones"      : [1, 5],
     #"gamma"           : 0.5,
-    "num_epochs"      : 100,
+    "num_epochs"      : 80,
     "batch_size"      : 16,
     "pep_freq_range" : [0.005, 0.1],
     "k_top_peptides" : 10,
@@ -123,7 +123,7 @@ dataset = TCRpMHCDataset("data/02-processed/tcrpMHC_combined_train_data.csv", co
 
 # Define models to train
 models_dict = {
-    "cangin": {'model_class': CrossAttentionNodesGIN}
+#    "cangin": {'model_class': CrossAttentionNodesGIN}
 }
 
 # add architectures with cross attention variants
@@ -138,30 +138,54 @@ for graph_enc, cross_nodes, cross_embed in product(
 
 print(f"Starting for loop over architectures and embedding methods...")
 for embed in config['embed_method']:
+
+    # prepare run config for each architecture
+    run_cfg = deepcopy(config)
+        
+    log.info("Using embedding method: %s", embed)
+
+    # embed-specific training params
+    if embed == "atchley":
+        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=16)
+    else:
+        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=128)
+
+
+    log.info("Generating graphs...")
+    channels = ChannelsGraph(dataset, config=run_cfg, embed_method=embed)
+    peptides = channels.get_seq_chain(name="pMHC", chain="C")
+
+    ds = ChannelsPairDataset(
+        ids=channels.ids,
+        ch1_graphs=channels.ch1,
+        ch2_graphs=channels.ch2,
+        labels=channels.get_labels(),
+        ch1_name=channels.channel_names[0],
+        ch2_name=channels.channel_names[1],
+    )
+
+    validate_data(train_data, dict_lists={
+        "id": channels.ids,
+        "epitope": peptides,
+        "label": channels.get_labels(),
+        "TRA": channels.get_seq_chain(name="TCR", chain="D"),
+        "TRB": channels.get_seq_chain(name="TCR", chain="E")
+    }, cols_to_check=["epitope", "label", "TRA", "TRB"])
+
     for arch, model_cfg in models_dict.items():
         
         model_class = model_cfg['model_class']
-        
-        # prepare run config for each architecture
-        run_cfg = deepcopy(config)
 
         if model_class == XATTGraph:
             cross_embed = model_cfg['cross_embed']
             cross_nodes = model_cfg['cross_nodes']
             run_cfg.update({
-                "graph_encoder": graph_enc,
-                "cross_nodes": cross_nodes,
-                "cross_embed": cross_embed
+                "graph_encoder" : graph_enc,
+                "cross_nodes"   : cross_nodes,
+                "cross_embed"   : cross_embed
                 })
             
         log.info("Running architecture: %s", arch)
-        log.info("Using embedding method: %s", embed)
-
-        # embed-specific training params
-        if embed == "atchley":
-            run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=16)
-        else:
-            run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=128)
 
         # save dir per-run
         dropout = int(run_cfg["model_params"].get("dropout", 0) * 10)
@@ -170,31 +194,11 @@ for embed in config['embed_method']:
         os.makedirs(save_dir, exist_ok=True)
         basename = save_dir.split("/")[-1]
         
-        #if basename in ["GIN_cn1_ce1_neg5_esm3_dp03", "GIN_cn1_ce0_neg5_esm3_dp03"]:
-        #    log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
-        #    continue
+        if basename in ["GIN_cn1_ce1_neg3_esm3_dp03"]:
+            log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
+            continue
 
-        try:
-            channels = ChannelsGraph(dataset, config=run_cfg, embed_method=embed)
-            peptides = channels.get_seq_chain(name="pMHC", chain="C")
-
-            ds = ChannelsPairDataset(
-                ids=channels.ids,
-                ch1_graphs=channels.ch1,
-                ch2_graphs=channels.ch2,
-                labels=channels.get_labels(),
-                ch1_name=channels.channel_names[0],
-                ch2_name=channels.channel_names[1],
-            )
-
-            validate_data(train_data, dict_lists={
-                "id": channels.ids,
-                "epitope": peptides,
-                "label": channels.get_labels(),
-                "TRA": channels.get_seq_chain(name="TCR", chain="D"),
-                "TRB": channels.get_seq_chain(name="TCR", chain="E")
-            }, cols_to_check=["epitope", "label", "TRA", "TRB"])
-
+        try:    
             cv = CrossValidator(
                 model_class=model_class,
                 dataset=ds,
@@ -229,7 +233,7 @@ for embed in config['embed_method']:
             except Exception:
                 pass
 
-            for obj in ("channels", "ds", "cv"):
+            for obj in ("cv"):
                 if obj in locals():
                     try:
                         del globals()[obj]
