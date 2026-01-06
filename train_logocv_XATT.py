@@ -69,7 +69,7 @@ af_score2_data.reset_index(drop=True, inplace=True)
 print(af_score2_data.head())
 
 af_data = pd.concat([af_score3_data, af_score2_data], ignore_index=True)
-print(f'Final AlphaFold training data size: {af_data.shape}')
+print(f'Final AlphaFold training data size:{af_data.shape}')
 
 # remove overlapping epitopes
 tcr3d_data = tcr3d_data[~tcr3d_data['epitope'].isin(af_data['epitope'])]
