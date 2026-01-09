@@ -336,36 +336,14 @@ class ChannelsGraph:
         self.embed_method = embed_method
         self._convertor = get(f"channels.{self.cfg.graph_method}")(config=self.cfg, embed_method=self.embed_method) # GrapheinToChannels
         self._dataset = dataset
-
-        results_topyg = multiproc(self._convertor, self._dataset)
-
-        ids, labels, str_dataset, seq_dataset = zip(*results_topyg)
-        self._str_dataset = str_dataset   
-        self._seq_dataset = seq_dataset
         self.channel_names = list(self.cfg.channels)
-
-        # ---- IDs & labels (keep two forms) ----
-        self.ids = list(ids)
-        self.y_list = list(labels)  # for sklearn
-        self.y_tensor = torch.tensor(self.y_list, dtype=torch.float32).view(-1, 1)  # for torch
-
-        # Pick first two structural channels deterministically
-        assert len(self.channel_names) >= 2, "Need at least two channels"
-
-        ch1_name, ch2_name = self.channel_names[:2]
-
-        self.ch1 = (self.to_minimal(g) if g is not None else None
-                    for g in self.iter_channel(self._str_dataset, ch1_name))
-        self.ch2 = (self.to_minimal(g) if g is not None else None
-                    for g in self.iter_channel(self._str_dataset, ch2_name))
-        self.ids = list(ids)
 
     @staticmethod
     def iter_channel(dataset, key):
         return (sample.get(key, None) for sample in dataset)
 
     #-----------Graph Featurize----------
-    def to_minimal(self, g: Data) -> Data:
+    def _to_minimal(self, g: Data) -> Data:
         # keep only x and edge_index)
         if hasattr(g, self.embed_method):
             x = g[self.embed_method]
@@ -376,20 +354,55 @@ class ChannelsGraph:
                     chain_id=g.chain_id, resid=g.residue_number, 
                     resname=g.residue_name, name=g.name) #TODO structural information can be add here
 
+    def _convert_one_pair(self, idx: int):
+
+        result_topyg = self._convertor(self._dataset[idx])
+        id, label, str_data, seq_data = result_topyg
+
+        ch1_name, ch2_name = self.channel_names[:2]
+
+        ch1 = self._to_minimal(str_data.get(ch1_name, None))
+        ch2 = self._to_minimal(str_data.get(ch2_name, None))
+        peptide = seq_data['pMHC']['C'] # TODO optimize peptide declaration
+        tra = seq_data['TCR']['D']
+        trb = seq_data['TCR']['E']
+
+        result = {
+            "id": id,
+            "label": label,
+            "ch1": ch1,
+            "ch2": ch2,
+            "peptide": peptide,
+            "TRA": tra,
+            "TRB": trb
+        }
+        return result
+
     # ---------- Getters ----------
-    def get_str_channel(self, name: str):
-        return self.iter_channel(self._str_dataset, name) # create a NEW iterator, don’t reuse a stored generator
+    #def get_str_channel(self, name: str):
+    #    return self.# create a NEW iterator, don’t reuse a stored generator
 
-    def get_seq_channel(self, name: str):
-        return self.iter_channel(self._seq_dataset, name) # create a NEW iterator, don’t reuse a stored generator
+    #def get_seq_channel(self, name: str):
+    #    return self.iter_channel(self._seq_dataset, name) # create a NEW iterator, don’t reuse a stored generator
 
-    def get_seq_chain(self, name: str, chain: str):
-        return [(s.get(chain) if s is not None else None) for s in self.get_seq_channel(name)]
+    #def get_seq_chain(self, name: str, chain: str):
+    #    return [(s.get(chain) if s is not None else None) for s in self.get_seq_channel(name)]
 
-    def get_labels(self): 
-        return self.y_list
+    #def get_labels(self): 
+    #    return self.y_list
 
+    def __getitem__(self, idx: int):
+        return self._convert_one_pair(idx)
 
+    def __len__(self):
+        return len(self._dataset)
+
+    def __iter__(self):
+        for idx in range(len(self)):
+            item = self[idx]
+            if item is None:
+                raise ValueError(f"SamplePair not found for index: {idx}")
+            yield item
 
 class ChannelsPairDataset(Dataset_n):
     """
@@ -399,42 +412,39 @@ class ChannelsPairDataset(Dataset_n):
     """
     def __init__(
         self,
-        ids: List[str],
-        ch1_graphs: Sequence[Data],
-        ch2_graphs: Sequence[Data],
-        labels: Union[Sequence[int], Sequence[float], torch.Tensor],
+        channels_graph: ChannelsGraph,
         ch1_name: str = "ch1",
         ch2_name: str = "ch2",
         y_dtype: torch.dtype = torch.float32,
         mask_between: bool = True,
         mask_chain_map: dict = {'A': False, 'C': True, 'D': True, 'E': True}
     ):
-        self.ch1 = list(ch1_graphs)
-        self.ch2 = list(ch2_graphs)
-        self.n = len(self.ch1)
+        self.channels_graph = channels_graph
+        self.n = len(channels_graph)
         self.ch1_name, self.ch2_name = ch1_name, ch2_name
-        self.ids = ids
 
         self.mask_chain_map = mask_chain_map
         self.mask_between = mask_between
 
         #assert len(self.ch1) == len(self.ch2) == len(ids), "Channel lengths must match"
-        
-        if isinstance(labels, torch.Tensor):
-            assert labels.shape[0] == self.n
-            self.y = labels.reshape(-1, 1).to(y_dtype)
-        else:
-            self.y = torch.tensor(labels, dtype=y_dtype).view(-1, 1)
 
-        # (Optional) sanity: ensure x exists and dims are consistent per type
-        d1 = self.ch1[0].x.size(-1); d2 = self.ch2[0].x.size(-1)
-        for g in self.ch1:
-            assert hasattr(g, "x") and hasattr(g, "edge_index")
-            assert g.x.size(-1) == d1, "All ch1.x must share same width"
-        for g in self.ch2:
-            assert hasattr(g, "x") and hasattr(g, "edge_index")
-            assert g.x.size(-1) == d2, "All ch2.x must share same width"
-    
+        self.ids, self.labels, self.peptides = self._first_collection(channels_graph)
+
+        #For sanity
+        log.info(f"Sample IDs: {self.ids[:30:3]}")
+        log.info(f"Sample Labels: {self.labels[:30:3]}")
+        log.info(f"Sample Peptides: {self.peptides[:30:3]}")
+        
+        if isinstance(self.labels, torch.Tensor):
+            assert self.labels.shape[0] == self.n
+            self.y = self.labels.reshape(-1, 1).to(y_dtype)
+        else:
+            self.y = torch.tensor(self.labels, dtype=y_dtype).view(-1, 1)
+
+    def _first_collection(self, dataset) -> List[HeteroData]:
+        ids, labels, peptides = zip(*[(i.get('id'), i.get('label'), i.get('peptide')) for i in dataset])
+        return ids, labels, peptides
+
     @staticmethod
     def _as_long_idx(idx, N: int) -> torch.Tensor:
         if isinstance(idx, slice):
@@ -456,11 +466,25 @@ class ChannelsPairDataset(Dataset_n):
         idx_t = self._as_long_idx(idx, len(self))
         return torch.index_select(self.y, 0, idx_t)
 
-    def __len__(self): return self.n
+    def _convert_one_pair(self, idx: int) -> Tuple[int, int, HeteroData, HeteroData]:
+        
+        input = self.channels_graph[idx]
+        id = input['id']
+        label = input['label']
+        g1 = input['ch1']
+        g2 = input['ch2']
 
-    def __getitem__(self, idx: int) -> HeteroData:
-        g1, g2 = self.ch1[idx], self.ch2[idx]
-        y = self.y[idx].view(1, -1)  # [1,1]
+        assert id == self.ids[idx], "ID mismatch"
+        assert label == self.y[idx].item(), "Label mismatch"
+
+        # (Optional) sanity: ensure x exists and dims are consistent per type
+        d1 = g1.x.size(-1); d2 = g2.x.size(-1)
+        assert hasattr(g1, "x") and hasattr(g1, "edge_index")
+        assert g1.x.size(-1) == d1, "All ch1.x must share same width"
+        assert hasattr(g2, "x") and hasattr(g2, "edge_index")
+        assert g2.x.size(-1) == d2, "All ch2.x must share same width"
+
+        y = self.y[idx].view(1, -1)
 
         hd = HeteroData()
         hd['id'] = self.ids[idx]
@@ -492,5 +516,10 @@ class ChannelsPairDataset(Dataset_n):
 
         # Graph-level label
         hd["y"] = y
-
+    
         return hd
+
+    def __len__(self): return self.n
+
+    def __getitem__(self, idx: int) -> HeteroData:
+        return self._convert_one_pair(idx)

@@ -21,6 +21,7 @@ from torch_geometric.loader import DataLoader
 from torch.utils.data import TensorDataset
 from torch.nn.functional import binary_cross_entropy_with_logits
 from torch_geometric.data import Data, Batch
+from pathlib import Path
 import os
 import json
 import logging as log
@@ -35,6 +36,13 @@ log.getLogger("MDAnalysis").setLevel(log.WARNING)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
+# Data Paths
+tcr3d_path = "data/02-processed/tcr3d_20251004_renamed.csv"
+af_score3_path = "data/01-raw/AF_vdjdb_score3_20251212.csv"
+af_score2_path = "data/01-raw/AF_vdjdb_score2_wojust10x_20260105.csv"
+filter_10x = True
+pmid10x = ['34793243', '30418433', '35383307', '37872153', '32081129','30451992', '34811538']
+
 map_cols = {
     'TCR_ID': 'id',
     'TRA_ref': 'TRA',
@@ -45,34 +53,37 @@ map_cols = {
 }
 
 # Load Experimental Data
-tcr3d_data_path = "data/02-processed/tcr3d_20251004_renamed.csv"
-tcr3d_data = pd.read_csv(tcr3d_data_path, index_col=0)
+tcr3d_data = pd.read_csv(tcr3d_path, index_col=0)
 tcr3d_data.drop(['TRA', 'TRB', 'MHCseq'], axis=1, inplace=True)
 tcr3d_data.rename(columns=map_cols, inplace=True)
 tcr3d_data.reset_index(drop=True, inplace=True)
-print(tcr3d_data.head())
 
 # Load AF score 3 Data
-af_score3_data_path = "data/01-raw/AF_vdjdb_score3_20251212.csv"
-af_score3_data = pd.read_csv(af_score3_data_path)
+af_score3_data = pd.read_csv(af_score3_path)
 af_score3_data.rename(columns=map_cols, inplace=True)
 af_score3_data.reset_index(drop=True, inplace=True)
-print(af_score3_data.head())
 
 # Load AF score 2 Data
-
-af_score2_data_path = "data/01-raw/AF_vdjdb_score2_wojust10x_20251217.csv"
-af_score2_data = pd.read_csv(af_score2_data_path)
+af_score2_data = pd.read_csv(af_score2_path)
 af_score2_data.rename(columns=map_cols, inplace=True)
-af_score2_data = af_score2_data[af_score2_data['filepath_a'].notna() & af_score2_data['filepath_b'].notna()]
 af_score2_data.reset_index(drop=True, inplace=True)
-print(af_score2_data.head())
 
 af_data = pd.concat([af_score3_data, af_score2_data], ignore_index=True)
+af_data = af_data[af_data['filepath_a'].notna() & af_data['filepath_b'].notna()]
+af_data.reset_index(drop=True, inplace=True)
+
+if len(pmid10x) > 0 and filter_10x:
+    af_data = af_data[~af_data['Reference'].isin(pmid10x)]
+    print(f'Removed 10x samples from AF data: {pmid10x}')
+
+else:
+    print(f'No 10x samples removed from AF data.')
+
 print(f'Final AlphaFold training data size:{af_data.shape}')
 
 # remove overlapping epitopes
 tcr3d_data = tcr3d_data[~tcr3d_data['epitope'].isin(af_data['epitope'])]
+
 print(f'TCR3D training data size after removing overlapping epitopes: {tcr3d_data.shape}')
 
 train_data = pd.concat([tcr3d_data, af_data], ignore_index=True)
@@ -94,10 +105,10 @@ train_params = {
     "learning_rate"   : 0.0001,
     #"milestones"      : [1, 5],
     #"gamma"           : 0.5,
-    "num_epochs"      : 80,
+    "num_epochs"      : 60,
     "batch_size"      : 16,
     "pep_freq_range" : [0.005, 0.1],
-    "k_top_peptides" : 10,
+    "k_top_peptides" : 3,
     "weight_decay"   : 0.01
 }
 
@@ -107,7 +118,7 @@ config = {
     "pairing_method"  : "basic",
     "embed_method"    : ["esm3"],
     "graph_method"    : "graphein",
-    "negative_prop"   : 3,
+    "negative_prop"   : 1,
     "edge_params"     : ["distance_threshold"],
     "node_params"     : ["amino_acid_one_hot", "hbond_donors", "hbond_acceptors", "dssp_config"],
     "graph_params"    : ["rsa"],
@@ -123,7 +134,7 @@ dataset = TCRpMHCDataset("data/02-processed/tcrpMHC_combined_train_data.csv", co
 
 # Define models to train
 models_dict = {
-#    "cangin": {'model_class': CrossAttentionNodesGIN}
+    "cangin": {'model_class': CrossAttentionNodesGIN}
 }
 
 # add architectures with cross attention variants
@@ -146,30 +157,28 @@ for embed in config['embed_method']:
 
     # embed-specific training params
     if embed == "atchley":
-        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=16)
+        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=32) #16 in original
     else:
-        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=128)
+        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=256) #128 in original
 
 
     log.info("Generating graphs...")
     channels = ChannelsGraph(dataset, config=run_cfg, embed_method=embed)
-    peptides = channels.get_seq_chain(name="pMHC", chain="C")
+    peptides = [ch.get('peptide') for ch in channels]
 
     ds = ChannelsPairDataset(
-        ids=channels.ids,
-        ch1_graphs=channels.ch1,
-        ch2_graphs=channels.ch2,
-        labels=channels.get_labels(),
+        channels_graph=channels,
         ch1_name=channels.channel_names[0],
         ch2_name=channels.channel_names[1],
     )
 
+    chids, chlabels, chpeptides, chtras, chtrbs = zip(*[(i.get('id'), i.get('label'), i.get('peptide'), i.get('TRA'), i.get('TRB')) for i in channels])
     validate_data(train_data, dict_lists={
-        "id": channels.ids,
-        "epitope": peptides,
-        "label": channels.get_labels(),
-        "TRA": channels.get_seq_chain(name="TCR", chain="D"),
-        "TRB": channels.get_seq_chain(name="TCR", chain="E")
+        "id": chids,
+        "epitope": chpeptides,
+        "label": chlabels,
+        "TRA": chtras,
+        "TRB": chtrbs
     }, cols_to_check=["epitope", "label", "TRA", "TRB"])
 
     for arch, model_cfg in models_dict.items():
@@ -189,14 +198,14 @@ for embed in config['embed_method']:
 
         # save dir per-run
         dropout = int(run_cfg["model_params"].get("dropout", 0) * 10)
-        save_dir = f"developments/increase_dataset_1217_neg3/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
+        save_dir = f"developments/increase_dataset_0105_incEmbed_neg{run_cfg['negative_prop']}_bs{train_params['batch_size']}_lr{train_params['learning_rate']*10000}_no10x/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
         run_cfg["save_dir"] = save_dir
-        os.makedirs(save_dir, exist_ok=True)
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         basename = save_dir.split("/")[-1]
         
-        if basename in ["GIN_cn1_ce1_neg3_esm3_dp03"]:
-            log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
-            continue
+        #if basename in ["GIN_cn1_ce1_neg3_esm3_dp03"]:
+        #    log.info(f"Skipping architecture: {arch} with embedding method: {embed}")
+        #    continue
 
         try:    
             cv = CrossValidator(

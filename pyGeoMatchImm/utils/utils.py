@@ -97,7 +97,6 @@ def validate_data(df: pd.DataFrame, dict_lists: dict, cols_to_check: list) -> bo
                 log.error(f"Expected positive id: {id_row_input['id'].values[0]}, col_value: {id_row_input[col].values[0]}")
                 return False
 
-            
-    return 'Validation passed!'
 
-
+    log.info('Validation passed!')
+    return True
