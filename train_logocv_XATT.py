@@ -103,9 +103,9 @@ model_params = {
 
 train_params = {
     "learning_rate"   : 0.0001,
-    #"milestones"      : [1, 5],
+    "save_model"      : False,
     #"gamma"           : 0.5,
-    "num_epochs"      : 60,
+    "num_epochs"      : 100,
     "batch_size"      : 16,
     "pep_freq_range" : [0.005, 0.1],
     "k_top_peptides" : 3,
@@ -118,7 +118,7 @@ config = {
     "pairing_method"  : "basic",
     "embed_method"    : ["esm3"],
     "graph_method"    : "graphein",
-    "negative_prop"   : 1,
+    "negative_prop"   : 3,
     "edge_params"     : ["distance_threshold"],
     "node_params"     : ["amino_acid_one_hot", "hbond_donors", "hbond_acceptors", "dssp_config"],
     "graph_params"    : ["rsa"],
@@ -139,7 +139,7 @@ models_dict = {
 
 # add architectures with cross attention variants
 for graph_enc, cross_nodes, cross_embed in product(
-    ["GIN", "GCN", "GAT"], [True, False], [True, False]):
+    ["GIN"], [True, False], [True, False]):
     arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
 
     models_dict.update({arch: {'model_class': XATTGraph,
@@ -157,9 +157,9 @@ for embed in config['embed_method']:
 
     # embed-specific training params
     if embed == "atchley":
-        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=32) #16 in original
+        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=True, out_channels=16) #16 in original
     else:
-        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=256) #128 in original
+        run_cfg["train_params"] = dict(run_cfg.get("train_params", {}), norm=False, out_channels=128) #128 in original
 
 
     log.info("Generating graphs...")
@@ -198,7 +198,7 @@ for embed in config['embed_method']:
 
         # save dir per-run
         dropout = int(run_cfg["model_params"].get("dropout", 0) * 10)
-        save_dir = f"developments/increase_dataset_0105_incEmbed_neg{run_cfg['negative_prop']}_bs{train_params['batch_size']}_lr{train_params['learning_rate']*10000}_no10x/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
+        save_dir = f"developments/increase_dataset_0105_neg{run_cfg['negative_prop']}_bs{train_params['batch_size']}_lr{train_params['learning_rate']*10000}_no10x/{arch}_neg{run_cfg['negative_prop']}_{embed}_dp0{dropout}"
         run_cfg["save_dir"] = save_dir
         Path(save_dir).mkdir(parents=True, exist_ok=True)
         basename = save_dir.split("/")[-1]

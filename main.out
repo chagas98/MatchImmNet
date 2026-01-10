@@ -4278,3 +4278,12 @@ Generate negatives and combine with positives
 
 INFO:pyGeoMatchImm.utils.negatives:Preparating data for chains Peptide chain C and  MHC chain A
 INFO:pyGeoMatchImm.utils.negatives:Data: 2113 positive samples.
+INFO:pyGeoMatchImm.utils.base:CompleteDataset initialized with 8452 samples (2113 positives and 6339 negatives).
+INFO:pyGeoMatchImm.data.datasets:
+Embedding sequences using methods: ['esm3']...
+
+INFO:pyGeoMatchImm.data.datasets:Embedding sequences using ESM-3...
+Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+WARNING:huggingface_hub._login:Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+INFO:pyGeoMatchImm.embeddings.esm:Successfully logged in to Hugging Face!
+Fetching 22 files:   0%|          | 0/22 [00:00<?, ?it/s]Fetching 22 files: 100%|██████████| 22/22 [00:00<00:00, 89240.51it/s]

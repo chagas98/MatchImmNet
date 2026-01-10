@@ -247,6 +247,7 @@ class Trainer:
         self.n_epochs_stop = cfg.get("n_epochs_stop", 6)
         self.num_epochs = cfg.get("num_epochs", 50)
         self.weight_decay = cfg.get("weight_decay", 0.00005)
+        self.save_model = cfg.get("save_model", False)
         self.ch_names = configs.channels
 
         self.device = device
@@ -317,7 +318,12 @@ class Trainer:
                 #embeddings['posmlp'].extend(self.model.posmlp)
                 embeddings['label'].extend(label.view(-1).cpu())
                 embeddings['probs'].extend(probs.view(-1).cpu())
+            
+            #save model
+            if epoch == self.num_epochs and self.save_model:
+                torch.save(self.model, f"{self.save_dir}/model_{self.peptide}.pt")
 
+            # sanity check for gradients
             for name, param in self.model.named_parameters():
                 if param.grad is None:
                     print(f"{name}: no gradient!")
