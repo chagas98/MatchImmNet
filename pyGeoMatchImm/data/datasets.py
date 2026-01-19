@@ -27,7 +27,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 import pandas as pd
 import numpy as np
 import os
-from os import cpu_count, name
+import shutil
 from random import shuffle
 import logging
 log = logging.getLogger(__name__)
@@ -333,10 +333,15 @@ class ChannelsGraph:
         log.info('Building Protein Features inputs...')
 
         self.cfg = TrainConfigs(**config)
+        self.materialize_graphs = self.cfg.materialize  
         self.embed_method = embed_method
         self._convertor = get(f"channels.{self.cfg.graph_method}")(config=self.cfg, embed_method=self.embed_method) # GrapheinToChannels
         self._dataset = dataset
         self.channel_names = list(self.cfg.channels)
+
+        if self.materialize_graphs:
+            shutil.rmtree("tmp_checkpoints", ignore_errors=True)
+            os.makedirs("tmp_checkpoints", exist_ok=True)
 
     @staticmethod
     def iter_channel(dataset, key):
@@ -367,16 +372,38 @@ class ChannelsGraph:
         tra = seq_data['TCR']['D']
         trb = seq_data['TCR']['E']
 
-        result = {
-            "id": id,
-            "label": label,
-            "ch1": ch1,
-            "ch2": ch2,
-            "peptide": peptide,
-            "TRA": tra,
-            "TRB": trb
-        }
-        return result
+        if self.materialize_graphs:
+            path = f"tmp_checkpoints/{id}.pt"
+            torch.save({
+                "id": id,
+                "label": label,
+                "ch1": ch1,
+                "ch2": ch2,
+                "peptide": peptide,
+                "TRA": tra,
+                "TRB": trb
+            }, path)
+
+            result = {
+                "id": id,
+                "label": label,
+                "peptide": peptide,
+                "TRA": tra,
+                "TRB": trb,
+                "path": path
+            }
+            return result
+        else:
+            result = {
+                "id": id,
+                "label": label,
+                "ch1": ch1,
+                "ch2": ch2,
+                "peptide": peptide,
+                "TRA": tra,
+                "TRB": trb
+            }
+            return result
 
     # ---------- Getters ----------
     #def get_str_channel(self, name: str):
@@ -417,8 +444,9 @@ class ChannelsPairDataset(Dataset_n):
         ch2_name: str = "ch2",
         y_dtype: torch.dtype = torch.float32,
         mask_between: bool = True,
-        mask_chain_map: dict = {'A': False, 'C': True, 'D': True, 'E': True}
-    ):
+        mask_chain_map: dict = {'A': False, 'C': True, 'D': True, 'E': True},
+        materialize_graphs: bool = True,
+    ):  
         self.channels_graph = channels_graph
         self.n = len(channels_graph)
         self.ch1_name, self.ch2_name = ch1_name, ch2_name
@@ -426,9 +454,9 @@ class ChannelsPairDataset(Dataset_n):
         self.mask_chain_map = mask_chain_map
         self.mask_between = mask_between
 
-        #assert len(self.ch1) == len(self.ch2) == len(ids), "Channel lengths must match"
+        self.materialize_graphs = materialize_graphs
 
-        self.ids, self.labels, self.peptides = self._first_collection(channels_graph)
+        self._first_collection(channels_graph)
 
         #For sanity
         log.info(f"Sample IDs: {self.ids[:30:3]}")
@@ -442,8 +470,7 @@ class ChannelsPairDataset(Dataset_n):
             self.y = torch.tensor(self.labels, dtype=y_dtype).view(-1, 1)
 
     def _first_collection(self, dataset) -> List[HeteroData]:
-        ids, labels, peptides = zip(*[(i.get('id'), i.get('label'), i.get('peptide')) for i in dataset])
-        return ids, labels, peptides
+        self.ids, self.labels, self.peptides = zip(*[(i.get('id'), i.get('label'), i.get('peptide')) for i in dataset])
 
     @staticmethod
     def _as_long_idx(idx, N: int) -> torch.Tensor:
@@ -467,8 +494,12 @@ class ChannelsPairDataset(Dataset_n):
         return torch.index_select(self.y, 0, idx_t)
 
     def _convert_one_pair(self, idx: int) -> Tuple[int, int, HeteroData, HeteroData]:
-        
-        input = self.channels_graph[idx]
+
+        if self.materialize_graphs:
+            input = torch.load(self.channels_graph[idx]['path'], weights_only=False)
+        else:
+            input = self.channels_graph[idx]
+
         id = input['id']
         label = input['label']
         peptide = input['peptide']

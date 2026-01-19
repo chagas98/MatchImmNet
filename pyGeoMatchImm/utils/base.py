@@ -135,6 +135,7 @@ class PairsAnnotation:
 
 class TrainConfigs(BaseModel):
     source          : Optional[str]
+    materialize     : Optional[bool] = True
     channels        : Optional[List[str]] = ['TCR', 'pMHC']
     negative_prop   : Optional[int] = 1
     graph_method    : Optional[str]
