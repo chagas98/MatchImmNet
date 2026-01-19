@@ -4,10 +4,7 @@
 from pyGeoMatchImm.metrics.train_metrics import (get_accuracy, 
                                                  get_auc01,
                                                  get_auc,
-                                                 get_conf_matrix, 
-                                                 plot_precision_recall_curve,
-                                                 plot_roc_curve,
-                                                 plot_loss_curve_logocv)
+                                                 get_conf_matrix)
 from sklearn.preprocessing import StandardScaler
 from ..utils.base import TrainConfigs
 from ..utils.visualize import visualize_embeddings, correlation_pred_labels
@@ -42,8 +39,11 @@ def compute_metrics_per_peptide(outputs):
             if peptide in seen:
                 continue
             seen.add(peptide)
-
+            log.info(f'Computing metrics for peptide: {peptide}')
+            log.info(f'Total samples: {len(peptides)}')
+            peptides = np.asarray(peptides)
             mask = (peptides == peptide)
+
             mask_size = mask.sum()
 
             y_true_pep = outputs['labels'][mask]
@@ -80,16 +80,20 @@ def compute_metrics_per_peptide(outputs):
 
 class Tester:
     def __init__(self, 
-                model_class: Any, 
+                model: Any, 
                 device: Any, 
-                configs: dict):
+                configs: dict,
+                channels: list = ['TCR', 'pMHC'],
+                output_suffix: str = ""):
 
-        self.model_class = model_class
+        self.model = model
         self.device = device
+        self.output_suffix = f"_{output_suffix}" if output_suffix != "" else ""
         self.configs = TrainConfigs(**configs)
+        self.channels = channels
         self.save_dir = self.configs.save_dir if self.configs.save_dir is not None else './'
         self.train_cfg = self.configs.train_params
-        self.batch_size = self.train_cfg.get("batch_size", 32)
+        self.batch_size = self.train_cfg.get("batch_size", 0)
 
 
     def normalize_embeddings(self, dataset: torch.Tensor) -> torch.Tensor:
@@ -115,11 +119,14 @@ class Tester:
         node_feature_len = test_loader.dataset[0][self.channels[0]].x.shape[1]
 
         log.info(f"Node feature length: {node_feature_len}")
-
+        log.info(f"Model configs: {self.configs}")
+        
         # Inference
-        self.model.eval()
+        loss_func = nn.BCEWithLogitsLoss()
+        self.model.eval()        
+        
         predictions, labels = torch.Tensor(), torch.Tensor()
-        val_loss = 0.0
+        test_loss = 0.0
         all_ids = []
         all_peptides = []
         with torch.no_grad():
@@ -131,11 +138,10 @@ class Tester:
 
                 # Models
                 inputs = batch.to(self.device)
-                self.model = self.model_class(self.configs, self.node_feature_len).to(self.device)
                 logits = self.model(inputs)
                 
                 # calculate loss
-                loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
+                loss_bce = loss_func(logits, label.view(-1,1).float().to(self.device))
                 test_loss += loss_bce.item() 
 
                 # calculate metrics
@@ -153,7 +159,8 @@ class Tester:
         }
 
         processed_results = compute_metrics_per_peptide(pred_results)
-        pd.DataFrame(pred_results).to_csv(f"{self.save_dir}/raw_test_results.csv", index=False)
-        pd.DataFrame(processed_results).to_csv(f"{self.save_dir}/summary_test_results.csv", index=False)
+
+        pd.DataFrame(pred_results).to_csv(f"{self.save_dir}/raw_test_results{self.output_suffix}.csv", index=False)
+        pd.DataFrame(processed_results).to_csv(f"{self.save_dir}/summary_test_results{self.output_suffix}.csv", index=False)
 
         return processed_results

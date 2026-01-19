@@ -90,7 +90,7 @@ class CrossValidator:
         self.channels = self.configs.channels
 
         self.cfg = self.configs.train_params
-        self.batch_size = self.cfg.get("batch_size", 32)
+        self.batch_size = self.cfg.get("batch_size", 0)
         self.k_top_peptides = self.cfg.get("k_top_peptides", 5)
         self.pfreqrange = self.cfg.get("pep_freq_range", [0.1, 0.2])
 
@@ -294,7 +294,18 @@ class Trainer:
         }
         all_ids = []
 
-        for count, batch in enumerate(self.trainloader):
+        for count, batch in enumerate(self.trainloader):         
+            
+            #check if all true
+            peptides_in_batch = batch['peptide']
+            
+            if self.peptide in peptides_in_batch:
+                raise ValueError(f"Peptide {self.peptide} found in training batch!")
+
+            if count == 0 and epoch == self.num_epochs:
+                log.info("Sanity check - training batch peptides:")
+                log.info(peptides_in_batch[:10])
+                log.info(batch['id'][:10])   
 
             label = batch["y"]
             all_ids.extend(batch["id"])
@@ -313,11 +324,11 @@ class Trainer:
             labels_tr = torch.cat((labels_tr, label.view(-1,1).cpu()), 0)
 
             # visualize
-            if epoch % 10 == 0 or epoch == 1 or epoch == self.num_epochs:
-                embeddings['concat_embed'].extend(self.model.concat_embed)
-                #embeddings['posmlp'].extend(self.model.posmlp)
-                embeddings['label'].extend(label.view(-1).cpu())
-                embeddings['probs'].extend(probs.view(-1).cpu())
+            #if epoch % 10 == 0 or epoch == 1 or epoch == self.num_epochs:
+            #    embeddings['concat_embed'].extend(self.model.concat_embed)
+            #    #embeddings['posmlp'].extend(self.model.posmlp)
+            #    embeddings['label'].extend(label.view(-1).cpu())
+            #    embeddings['probs'].extend(probs.view(-1).cpu())
             
             #save model
             if epoch == self.num_epochs and self.save_model:
@@ -327,12 +338,12 @@ class Trainer:
             for name, param in self.model.named_parameters():
                 if param.grad is None:
                     print(f"{name}: no gradient!")
-        if epoch % 10 == 0 or epoch == 1 or epoch == self.num_epochs:
-            visualize_embeddings(embeddings['concat_embed'], y=embeddings['label'], epoch=epoch, 
-                                 save_dir=self.save_dir, suffix=f'posconcat_{self.peptide}', ids = None)
-            visualize_embeddings(embeddings['concat_embed'], y=embeddings['probs'], epoch=epoch, 
-                                 save_dir=self.save_dir, suffix=f'posconcat_probs_{self.peptide}', ids = None)
-            correlation_pred_labels(embeddings['label'], embeddings['probs'], epoch=epoch, save_dir=self.save_dir, suffix=f'{self.peptide}')
+        #if epoch % 10 == 0 or epoch == 1 or epoch == self.num_epochs:
+            #visualize_embeddings(embeddings['concat_embed'], y=embeddings['label'], epoch=epoch, 
+            #                     save_dir=self.save_dir, suffix=f'posconcat_{self.peptide}', ids = None)
+            #visualize_embeddings(embeddings['concat_embed'], y=embeddings['probs'], epoch=epoch, 
+            #                     save_dir=self.save_dir, suffix=f'posconcat_probs_{self.peptide}', ids = None)
+            #correlation_pred_labels(embeddings['label'], embeddings['probs'], epoch=epoch, save_dir=self.save_dir, suffix=f'{self.peptide}')
         
 
         log.info(f"Logit mean: {logits.mean().item()}, std: {logits.std().item()}")
@@ -354,6 +365,11 @@ class Trainer:
         all_ids = []
         with torch.no_grad():
             for batch in self.valloader:
+
+                # check if peptide in validation batch is the same as self.peptide
+                if any(self.peptide != p for p in batch['peptide']):
+                    raise ValueError(f"A different peptide found in validation batch other than {self.peptide}!")
+                
                 label = batch["y"]
                 all_ids.extend(batch["id"])
                 batch = batch.to(self.device)

@@ -1,6 +1,7 @@
 from ..utils.base import _AHO_CDR_RANGES
 import networkx as nx
 import torch
+import torch.nn as nn
 
 import os
 import logging
@@ -9,37 +10,65 @@ log = logging.getLogger(__name__)
 
 
 class PositionalCDREmbedder:
-    def __init__(self):
-        
-        self.define_cdr()
+    """
+    Encodes AHO residue indices + chain identity into a discrete positional code.
+    Output range: [0, num_embeddings - 1]
+    """
 
-    def define_cdr(self):
-        # Create a lookup table for AHO CDR residues (mapping from 0 to 3 (CDR1, CDR2, CDR3, CDR2.5))
-        self.aho_cdr_mapping = {}
- 
-        for i, (cdr_name, residues) in enumerate(_AHO_CDR_RANGES.items()):
+    def __init__(self, device=None):
+        self.device = device
+        self._build_cdr_lookup()
 
-            self.aho_cdr_mapping.update(dict(zip(residues, [i] * len(residues))))
+    def _build_cdr_lookup(self):
+        # Default: 4 = framework
+        max_resid = max(max(v) for v in _AHO_CDR_RANGES.values())
+        lut = torch.full((max_resid + 1,), 4, dtype=torch.long)
 
-    def __call__(self, resids: torch.Tensor, chains: list) -> torch.Tensor:
-        
-        # use chains and resids to get positional embeddings
-        chains_map = {'D': 0, 'E': 5}
-        chains_indices = [chains_map.get(val, -1) for val in chains]
-        chains_indices = torch.tensor(chains_indices)
+        for i, (_, residues) in enumerate(_AHO_CDR_RANGES.items()):
+            lut[residues] = i
 
-        resids_indices = resids.cpu().apply_(lambda val: self.aho_cdr_mapping.get(val, 4))
+        self.cdr_lut = lut
 
-        resids_indices = resids_indices + chains_indices
-        resids_indices = resids_indices.unsqueeze(1).to(resids.device)
-        return resids_indices
+
+        # Chain offsets
+        self.chain_offsets = {
+            'D': 0,
+            'E': 5
+        }
+
+    def __call__(self, resids: torch.Tensor, chains: list[str]) -> torch.Tensor:
+        """
+        resids: (N,) tensor of AHO residue indices
+        chains: list[str] of length N
+        """
+
+        device = resids.device
+        lut = self.cdr_lut.to(device)
+
+        # CDR class lookup
+        cdr_ids = lut[resids]
+
+        # Chain offsets
+        try:
+            chain_offsets = torch.tensor(
+                [self.chain_offsets[c] for c in chains],
+                device=device,
+                dtype=torch.long
+            )
+        except KeyError as e:
+            raise ValueError(f"Unknown chain ID: {e}")
+
+        encoded = cdr_ids + chain_offsets
+
+        return encoded
+
     
 
 class PositionalCDREncoder(torch.nn.Module):
     def __init__(self, num_embeddings=10, embed_dim=10):
         super(PositionalCDREncoder, self).__init__()
-        self.embedder = PositionalCDREmbedder(num_embeddings=num_embeddings, embed_dim=embed_dim)
+        self.embedder = nn.Embedding(num_embeddings=num_embeddings, embedding_dim=embed_dim)
 
-    def forward(self, resids: torch.Tensor) -> torch.Tensor:
-        return self.embedder(resids)
+    def forward(self, resids_positional_encoded: torch.Tensor) -> torch.Tensor:
+        return self.embedder(resids_positional_encoded)
 

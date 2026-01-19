@@ -471,6 +471,7 @@ class ChannelsPairDataset(Dataset_n):
         input = self.channels_graph[idx]
         id = input['id']
         label = input['label']
+        peptide = input['peptide']
         g1 = input['ch1']
         g2 = input['ch2']
 
@@ -516,6 +517,7 @@ class ChannelsPairDataset(Dataset_n):
 
         # Graph-level label
         hd["y"] = y
+        hd["peptide"] = peptide
     
         return hd
 

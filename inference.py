@@ -25,6 +25,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 model_params = {
+    "n_output": 1,
+    "dropout": 0.3,
+    "n_layers": 2
 }
 
 train_params = {
@@ -35,7 +38,7 @@ config = {
     "source"          : "pdb",
     "channels"        : ["TCR", "pMHC"],
     "pairing_method"  : "basic",
-    "embed_method"    : ["esm3"],
+    "embed_method"    : ["atchley"],
     "graph_method"    : "graphein",
     "negative_prop"   : 3,
     "edge_params"     : ["distance_threshold"],
@@ -58,8 +61,14 @@ map_cols = {
     'peptide': 'epitope'
 }
 
-# Load Test Data
-test_path = "data/02-processed/tcr3d_20251004_renamed.csv"
+#Paths
+test_path = "/home/samuel.assis/MatchImm/MatchImmNet/data/01-raw/test_diff_1217_0105wo10x.csv"
+model_path = "/home/samuel.assis/MatchImm/MatchImmNet/developments/increase_dataset_1217_neg3_bs16_lr1.0_v3/GIN_cn1_ce0_neg3_atchley_dp03/model_IVTDFSVIK.pt"
+save_dir = os.path.dirname(model_path)
+config['save_dir'] = save_dir
+output_suffix = os.path.basename(model_path).split(".pt")[0].split("_")[1]
+
+# Load data
 test_data = pd.read_csv(test_path, index_col=0)
 test_data.rename(columns=map_cols, inplace=True)
 test_data.reset_index(drop=True, inplace=True)
@@ -70,11 +79,12 @@ select_columns = ['id', 'TRA', 'TRB', 'CDR1A', 'CDR2A', 'CDR3A', 'CDR1B', 'CDR2B
 test_data.drop_duplicates(subset=["TRA", "TRB", "epitope", "MHCseq"], inplace=True)
 test_data = test_data[select_columns].copy()
 
-test_data.to_csv("data/02-processed/tcrpMHC_combined_test_data.csv", index=False)
+
+test_data.to_csv(f"data/02-processed/test_diff_1217_0105wo10x.csv", index=False)
 
 print(f"Positives test data size: {test_data.shape}")
 
-dataset = TCRpMHCDataset("data/02-processed/tcrpMHC_combined_train_data.csv", config=config)
+dataset = TCRpMHCDataset("data/02-processed/test_diff_1217_0105wo10x.csv", config=config)
 embed = config['embed_method'][0]
 
 log.info("Using embedding method: %s", embed)
@@ -99,6 +109,6 @@ validate_data(test_data, dict_lists={
     "TRB": chtrbs
 }, cols_to_check=["epitope", "label", "TRA", "TRB"])
 
-model_path = "/home/samuel.assis/MatchImm/MatchImmNet/developments/increase_dataset_1217_neg3_bs16_lr1.0_v3/cangin_neg3_atchley_dp03/model_ASNENMETM.pt"
-model_class = torch.load(model_path, weights_only=False)
-Tester(model_class, device, configs=config).predict(ds)
+
+model = torch.load(model_path, weights_only=False)
+Tester(model, device, configs=config, output_suffix=output_suffix).predict(ds)
