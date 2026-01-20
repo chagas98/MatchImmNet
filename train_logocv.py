@@ -122,7 +122,7 @@ config = {
     "pairing_method"  : "basic",
     "embed_method"    : ["atchley"],
     "graph_method"    : "graphein",
-    "negative_prop"   : 1,
+    "negative_prop"   : 3,
     "edge_params"     : ["distance_threshold"],
     "node_params"     : ["amino_acid_one_hot", "hbond_donors", "hbond_acceptors", "dssp_config"],
     "graph_params"    : ["rsa"],
@@ -150,7 +150,7 @@ df0105 = load_structural_data(tcr3d_path, af_score3_path, af_score2_0105_path)
 diff_df = df0105[~df0105['id'].isin(df1217['id'])]
 diff_df_wo10x = diff_df[~diff_df['Reference'].isin(id10x)]
 
-train_data = pd.concat([df1217, diff_df_wo10x], ignore_index=True)[:100]
+train_data = pd.concat([df1217, diff_df_wo10x], ignore_index=True)
 train_data.drop_duplicates(subset=["TRA", "TRB", "epitope", "MHCseq"], inplace=True)
 
 select_columns = ['id', 'TRA', 'TRB', 'CDR1A', 'CDR2A', 'CDR3A', 'CDR1B', 'CDR2B', 'CDR3B', 'TRA_num', 'TRB_num', 'epitope', 'MHCseq', 'mhc_allele', 'filepath_a', 'filepath_b', 'label', 'source']
@@ -201,7 +201,7 @@ for arch, model_cfg in models_dict.items():
 
     # save dir per-run
     dropout = int(config["model_params"].get("dropout", 0) * 10)
-    save_dir = f"developments/test_xatt/{arch}_{embed}_drop{dropout}"
+    save_dir = f"developments/weighted_training/{arch}_{embed}_drop{dropout}"
     config["save_dir"] = save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     basename = save_dir.split("/")[-1]

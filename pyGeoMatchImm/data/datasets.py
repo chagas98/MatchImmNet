@@ -456,7 +456,8 @@ class ChannelsPairDataset(Dataset_n):
 
         self.materialize_graphs = materialize_graphs
 
-        self._first_collection(channels_graph)
+        self.ids, self.labels, self.peptides = self._first_collection(channels_graph)
+        self.pep_weights = self._weights_by_peptide()
 
         #For sanity
         log.info(f"Sample IDs: {self.ids[:30:3]}")
@@ -470,8 +471,18 @@ class ChannelsPairDataset(Dataset_n):
             self.y = torch.tensor(self.labels, dtype=y_dtype).view(-1, 1)
 
     def _first_collection(self, dataset) -> List[HeteroData]:
-        self.ids, self.labels, self.peptides = zip(*[(i.get('id'), i.get('label'), i.get('peptide')) for i in dataset])
+        return zip(*[(i.get('id'), i.get('label'), i.get('peptide')) for i in dataset])
+        
 
+    def _weights_by_peptide(self) -> torch.Tensor:
+        counts = pd.Series(self.peptides).value_counts()
+        weights = {pep: 1.0 / (counts[pep] ** 0.5) for pep in self.peptides}
+
+        # normalize
+        mean_weight = np.mean(list(weights.values()))
+        weights = {pep: (weights[pep] / mean_weight).round(2) for pep in self.peptides}
+
+        return weights
     @staticmethod
     def _as_long_idx(idx, N: int) -> torch.Tensor:
         if isinstance(idx, slice):
@@ -549,7 +560,8 @@ class ChannelsPairDataset(Dataset_n):
         # Graph-level label
         hd["y"] = y
         hd["peptide"] = peptide
-    
+        hd["weight"] = self.pep_weights[peptide]
+
         return hd
 
     def __len__(self): return self.n

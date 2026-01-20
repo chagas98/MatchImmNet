@@ -254,8 +254,12 @@ class Trainer:
         self.model = model.to(device)
         self.trainloader = trainloader
         self.valloader = valloader
+        
         #TODO : add other optimizers/losses
-        self.loss_func = nn.BCEWithLogitsLoss()
+        self.weighted_loss = cfg.get("weighted_loss", True)
+        self.loss_name = cfg.get("loss_function", "BCEWithLogits")
+        self.loss_func = self._define_loss_function(self.loss_name, self.weighted_loss)
+
         #self.optimizer = torch.optim.SGD(self.model.parameters(), lr=cfg["learning_rate"], weight_decay=self.weight_decay)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg["learning_rate"], weight_decay=self.weight_decay)
         self.scheduler = None #MultiStepLR(self.optimizer, milestones=cfg["milestones"], gamma=cfg["gamma"])
@@ -277,7 +281,26 @@ class Trainer:
 
         log.info(f'Training on {len(self.trainloader.dataset)} samples.....')
         log.info(f'Validation on {len(self.valloader.dataset)} samples.....')
-
+    
+    def _define_loss_function(self, loss_name: str, weighted: bool):
+        if loss_name == "BCEWithLogits":
+            if weighted:
+                return nn.BCEWithLogitsLoss(reduction='none')
+            else:
+                return nn.BCEWithLogitsLoss()
+        else:
+            raise ValueError(f"Loss function {loss_name} not recognized.")
+    
+    def run_loss_func(self, logits, labels, weighted: bool, weights=None):
+        
+        if weighted:
+            weights = labels.float().to(self.device)
+            loss = self.loss_func(logits, labels.view(-1,1).float().to(self.device))
+            loss = (loss * weights).mean()
+        else:
+            loss = self.loss_func(logits, labels.view(-1,1).float().to(self.device))
+        return loss
+    
     def train_one_epoch(self, epoch):
 
         self.model.train()
@@ -298,6 +321,7 @@ class Trainer:
             
             #check if all true
             peptides_in_batch = batch['peptide']
+            pep_weights = batch['weight'] # get peptide weights for weighted loss
             
             if self.peptide in peptides_in_batch:
                 raise ValueError(f"Peptide {self.peptide} found in training batch!")
@@ -312,9 +336,8 @@ class Trainer:
             batch = batch.to(self.device)
             
             logits = self.model(batch)
-            
-            loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
-            loss = loss_bce #+ 0.01 * loss_cl 
+
+            loss = self.run_loss_func(logits, label, weighted=self.weighted_loss, weights=pep_weights)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -375,8 +398,8 @@ class Trainer:
                 batch = batch.to(self.device)
                 logits = self.model(batch)
 
-                loss_bce = self.loss_func(logits, label.view(-1,1).float().to(self.device))
-                val_loss += loss_bce.item() #+ 0.01 * loss_cl.item()
+                loss = self.run_loss_func(logits, label, weighted=self.weighted_loss)
+                val_loss += loss.item()
 
                 probs = torch.sigmoid(logits).detach().cpu()
                 predictions = torch.cat((predictions, probs), 0)
