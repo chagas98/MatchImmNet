@@ -38,15 +38,18 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 #Data
-train_data_path = "data/02-processed/tcrpMHC_combined_train_data_1217.csv"
+train_data_path = "data/02-processed/tcrpMHC_combined_train_data_score3pdb.csv"
 train_data = pd.read_csv(train_data_path)
-channels_graph_path = "data/02-processed/channels_graph_1217.pt"
+channels_graph_path = "data/02-processed/channels_graph_atchley_score3pdb.pt"
 channels = torch.load(channels_graph_path, weights_only=False)
 
 model_params = {
     "n_output": 1,
     "dropout": 0.3,
-    "n_layers": 2
+    "n_layers": 2,
+    "posenc_peptide": True,
+    "posenc_cdr": True,
+    "posenc_mhc": True
 }
 
 train_params = {
@@ -111,6 +114,23 @@ validate_data(train_data, dict_lists={
     "TRB": chtrbs
 }, cols_to_check=["epitope", "label", "TRA", "TRB"])
 
+
+# Define models to train
+#models_dict = {
+#    "cangin": {'model_class': CrossAttentionNodesGIN}
+#}
+
+
+# add architectures with cross attention variants
+#for graph_enc, cross_nodes, cross_embed in product(
+#    ["GIN"], [True, False], [True, False]):
+#    arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
+
+#    models_dict.update({arch: {'model_class': XATTGraph,
+#                                'cross_embed': cross_embed,
+#                                'cross_nodes': cross_nodes
+#                                }})
+
 for arch, model_cfg in models_dict.items():
     
     model_class = model_cfg['model_class']
@@ -119,7 +139,7 @@ for arch, model_cfg in models_dict.items():
 
     # save dir per-run
     dropout = int(config["model_params"].get("dropout", 0) * 10)
-    save_dir = f"developments/weighted_training/{arch}_{embed}_drop{dropout}"
+    save_dir = f"developments/score3_encoders/{arch}_{embed}_drop{dropout}"
     config["save_dir"] = save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     basename = save_dir.split("/")[-1]

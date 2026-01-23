@@ -291,12 +291,22 @@ class Trainer:
         else:
             raise ValueError(f"Loss function {loss_name} not recognized.")
     
+    def _batch_weights_by_peptide(self, peptides) -> torch.Tensor:
+        counts = pd.Series(peptides).value_counts()
+        weights = {pep: 1.0 / (counts[pep] ** 0.5) for pep in peptides}
+
+        # normalize
+        mean_weight = np.mean(list(weights.values()))
+        weights = {pep: (weights[pep] / mean_weight).round(2) for pep in peptides}
+        return weights
+    
     def run_loss_func(self, logits, labels, weighted: bool, weights=None):
         
         if weighted:
             weights = labels.float().to(self.device)
             loss = self.loss_func(logits, labels.view(-1,1).float().to(self.device))
-            loss = (loss * weights).mean()
+            loss = (loss * weights * 0.1).mean()
+
         else:
             loss = self.loss_func(logits, labels.view(-1,1).float().to(self.device))
         return loss
@@ -321,8 +331,7 @@ class Trainer:
             
             #check if all true
             peptides_in_batch = batch['peptide']
-            pep_weights = batch['weight'] # get peptide weights for weighted loss
-            
+
             if self.peptide in peptides_in_batch:
                 raise ValueError(f"Peptide {self.peptide} found in training batch!")
 
@@ -336,7 +345,8 @@ class Trainer:
             batch = batch.to(self.device)
             
             logits = self.model(batch)
-
+            
+            pep_weights = self._batch_weights_by_peptide(peptides_in_batch)
             loss = self.run_loss_func(logits, label, weighted=self.weighted_loss, weights=pep_weights)
             self.optimizer.zero_grad()
             loss.backward()

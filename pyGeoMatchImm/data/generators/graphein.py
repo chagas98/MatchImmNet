@@ -180,7 +180,7 @@ class GrapheinToChannels:
         self.embed_method = embed_method
 
         # Keep track of which columns to convert
-        base_columns = ["coords", "distance", "edge_index", "chain_id", "residue_number", "residue_name"] #TODO we can use this stage to get mask matrix based on structural info
+        base_columns = ["coords", "distance", "edge_index", "chain_id", "residue_number", "residue_name"]
         node_columns = self.cfg.node_params if self.cfg.node_params else []
         if self.embed_method not in node_columns:
             node_columns.append(self.embed_method)

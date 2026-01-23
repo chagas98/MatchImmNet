@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # local toolkit
+import json
 import networkx as nx
 from networkx import nodes
 from ..utils.registry import register, get
@@ -9,6 +10,7 @@ from ..utils.base import PairsAnnotation, TrainConfigs, InputSequences, sSeq, sS
 from ..utils.utils import multiproc
 from ..embeddings.esm import ESM3Embedder
 from ..embeddings.atchley import AtchleyEmbedder
+from ..embeddings.positional import PositionalEmbedder
 from .parser import StructureParser
 from .generators.graphein import GrapheinGeneratorRes, GrapheinToChannels
 from ..utils.visualize import print_pymol_resids, launch_pymol, save_graph
@@ -130,6 +132,9 @@ class TCRpMHCDataset:
         # Featurization
         self._dataset = self._graph_generator()
 
+        log.info(f"\nApplying positional encodings...\n")
+        self._positional_embedder() # Positional embedder
+        quit()
         log.info(f"\nGenerate negatives and combine with positives\n")
         # Here self._dataset becomes CompleteDataset with positives and negatives
         self._dataset = self._genNegatives()
@@ -226,23 +231,42 @@ class TCRpMHCDataset:
             match method:
                 case 'esm3':
                     log.info("Embedding sequences using ESM-3...")
-                    self._embedder = ESM3Embedder(**self.cfg.__dict__)
-                    self._embedder.init_model() # initialize model once
+                    _embedder = ESM3Embedder(**self.cfg.__dict__)
+                    _embedder.init_model() # initialize model once
 
                 case 'atchley':
                     log.info("Embedding sequences using Atchley factors...")
-                    self._embedder = AtchleyEmbedder()
+                    _embedder = AtchleyEmbedder()
                 
             for sample in self._dataset:
                 struct_files = {struct.channel: struct.filepath for struct in sample.struct}
                 graphs = sample.getgraphs()
 
-                graphs_updated  = self._embedder(struct_files, graphs)
+                graphs_updated  = _embedder(struct_files, graphs)
                 for ch_name, g in graphs_updated.items():
                     sample.updatestructgraph(ch_name, g) # update graph in sample
                     log.debug(f"{method}: Updated graph for channel {ch_name} in sample {sample.id}:")
 
-                
+    def _positional_embedder(self):
+
+        _pos_embedder = PositionalEmbedder()
+        for sample in self._dataset:
+            graphs = sample.getgraphs()
+            for ch_name, g in graphs.items():
+                match ch_name:
+                    case 'pMHC':
+                        g_updated = _pos_embedder(g, 'MHC')
+                        g_updated = _pos_embedder(g_updated, 'epitope')
+                    case 'TCR':
+                        g_updated = _pos_embedder(g, 'TCR')
+                    case _:
+                        raise ValueError(f"Unknown channel for positional encoding: {ch_name}")
+                    
+                sample.updatestructgraph(ch_name, g_updated) # update graph in sample
+                print(g_updated.nodes(data=True))
+            
+                log.debug(f"Positional: Updated graph for channel {ch_name} in sample {sample.id}:")
+            quit()
     def _genNegatives(self):
         sampler = DistNegativeSampler(
             sample_pairs=self._dataset,
@@ -361,6 +385,9 @@ class ChannelsGraph:
 
     def _convert_one_pair(self, idx: int):
 
+        if not os.path.exists(f"tmp_checkpoints"):
+            os.makedirs("tmp_checkpoints", exist_ok=True)
+        
         result_topyg = self._convertor(self._dataset[idx])
         id, label, str_data, seq_data = result_topyg
 
@@ -456,8 +483,10 @@ class ChannelsPairDataset(Dataset_n):
 
         self.materialize_graphs = materialize_graphs
 
+        if materialize_graphs:
+            self.channels_graph = [torch.load(ch['path'], weights_only=False) for ch in channels_graph]
+
         self.ids, self.labels, self.peptides = self._first_collection(channels_graph)
-        self.pep_weights = self._weights_by_peptide()
 
         #For sanity
         log.info(f"Sample IDs: {self.ids[:30:3]}")
@@ -472,17 +501,7 @@ class ChannelsPairDataset(Dataset_n):
 
     def _first_collection(self, dataset) -> List[HeteroData]:
         return zip(*[(i.get('id'), i.get('label'), i.get('peptide')) for i in dataset])
-        
-
-    def _weights_by_peptide(self) -> torch.Tensor:
-        counts = pd.Series(self.peptides).value_counts()
-        weights = {pep: 1.0 / (counts[pep] ** 0.5) for pep in self.peptides}
-
-        # normalize
-        mean_weight = np.mean(list(weights.values()))
-        weights = {pep: (weights[pep] / mean_weight).round(2) for pep in self.peptides}
-
-        return weights
+    
     @staticmethod
     def _as_long_idx(idx, N: int) -> torch.Tensor:
         if isinstance(idx, slice):
@@ -506,11 +525,7 @@ class ChannelsPairDataset(Dataset_n):
 
     def _convert_one_pair(self, idx: int) -> Tuple[int, int, HeteroData, HeteroData]:
 
-        if self.materialize_graphs:
-            input = torch.load(self.channels_graph[idx]['path'], weights_only=False)
-        else:
-            input = self.channels_graph[idx]
-
+        input = self.channels_graph[idx]
         id = input['id']
         label = input['label']
         peptide = input['peptide']
@@ -560,7 +575,6 @@ class ChannelsPairDataset(Dataset_n):
         # Graph-level label
         hd["y"] = y
         hd["peptide"] = peptide
-        hd["weight"] = self.pep_weights[peptide]
 
         return hd
 
