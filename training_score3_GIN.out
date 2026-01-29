@@ -1,0 +1,351 @@
+nohup: ignoring input
+INFO:pyGeoMatchImm.data.datasets:Sample IDs: ('VDJdb674_VDJdb12874', 'PDB6eqa_VDJdb12162', 'VDJdb18688_VDJdb23527', 'PDB6l9l', 'VDJdb396', 'VDJdb9078_VDJdb7105', 'VDJdb20227_VDJdb24387', 'PDB5tje_VDJdb14220', 'VDJdb1177_VDJdb4006', 'VDJdb1608_VDJdb5069')
+INFO:pyGeoMatchImm.data.datasets:Sample Labels: (tensor([0.]), tensor([0.]), tensor([0.]), tensor([1.]), tensor([1.]), tensor([0.]), tensor([0.]), tensor([0.]), tensor([0.]), tensor([0.]))
+INFO:pyGeoMatchImm.data.datasets:Sample Peptides: ('KLGGALQAK', 'KLGGALQAK', 'GILGFVFTL', 'SPSYAYHQF', 'GILGFVFTL', 'RAKFKQLL', 'ALAGIGILTV', 'KLGGALQAK', 'KLGGALQAK', 'GILGFVFTL')
+INFO:pyGeoMatchImm.utils.utils:Starting data validation...
+INFO:pyGeoMatchImm.utils.utils:Validation passed!
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': True, 'pe_epitope': True, 'pe_mhc': True}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr1_peepi1_pemhc1_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 74.9204
+ERROR:root:Run failed for GIN_cn1_ce1_petcr1_peepi1_pemhc1_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': True, 'pe_epitope': True, 'pe_mhc': False}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr1_peepi1_pemhc0_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 74.9469
+ERROR:root:Run failed for GIN_cn1_ce1_petcr1_peepi1_pemhc0_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': True, 'pe_epitope': False, 'pe_mhc': True}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr1_peepi0_pemhc1_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 74.9204
+ERROR:root:Run failed for GIN_cn1_ce1_petcr1_peepi0_pemhc1_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': True, 'pe_epitope': False, 'pe_mhc': False}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr1_peepi0_pemhc0_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 75.0531
+ERROR:root:Run failed for GIN_cn1_ce1_petcr1_peepi0_pemhc0_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': False, 'pe_epitope': True, 'pe_mhc': True}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr0_peepi1_pemhc1_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 74.9735
+ERROR:root:Run failed for GIN_cn1_ce1_petcr0_peepi1_pemhc1_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': False, 'pe_epitope': True, 'pe_mhc': False}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr0_peepi1_pemhc0_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 74.8938
+ERROR:root:Run failed for GIN_cn1_ce1_petcr0_peepi1_pemhc0_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': False, 'pe_epitope': False, 'pe_mhc': True}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr0_peepi0_pemhc1_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 74.8938
+ERROR:root:Run failed for GIN_cn1_ce1_petcr0_peepi0_pemhc1_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': True, 'cross_nodes': True, 'pe_tcr': False, 'pe_epitope': False, 'pe_mhc': False}
+INFO:root:Running architecture: GIN_cn1_ce1_petcr0_peepi0_pemhc0_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 75.0265
+ERROR:root:Run failed for GIN_cn1_ce1_petcr0_peepi0_pemhc0_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': False, 'cross_nodes': True, 'pe_tcr': True, 'pe_epitope': True, 'pe_mhc': True}
+INFO:root:Running architecture: GIN_cn1_ce0_petcr1_peepi1_pemhc1_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....
+INFO:pyGeoMatchImm.train.train:Logit mean: nan, std: nan
+INFO:pyGeoMatchImm.train.train:Epoch 1 / 70 - train_loss: nan - train_accuracy: 75.0000
+ERROR:root:Run failed for GIN_cn1_ce0_petcr1_peepi1_pemhc1_atchley with embed=atchley
+Traceback (most recent call last):
+  File "/home/samuel.assis/MatchImm/MatchImmNet/train_logocv_score3.py", line 152, in <module>
+    cv.run()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 183, in run
+    losses_epochs, val_results_end, val_results_best, best_epoch = trainer.fit()
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 444, in fit
+    val_loss, val_accuracy, val_auc01, val_results = self.evaluate(epoch)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/train/train.py", line 425, in evaluate
+    auc01, ap = get_auc01(labels, predictions)
+  File "/home/samuel.assis/MatchImm/MatchImmNet/pyGeoMatchImm/metrics/train_metrics.py", line 38, in get_auc01
+    auc = roc_auc_score(y_true, y_pred, max_fpr=0.1)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 665, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 1105, in check_array
+    _assert_all_finite(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/home/samuel.assis/miniconda3/envs/pyMatchImm/lib/python3.10/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+INFO:root:Configuration model params: {'n_output': 1, 'dropout': 0.3, 'n_layers': 2, 'graph_encoder': 'GIN', 'cross_embed': False, 'cross_nodes': True, 'pe_tcr': True, 'pe_epitope': True, 'pe_mhc': False}
+INFO:root:Running architecture: GIN_cn1_ce0_petcr1_peepi1_pemhc0_atchley
+INFO:pyGeoMatchImm.train.train:Cross-validation on top 10 peptides with frequency range [0.005, 0.1]...
+INFO:pyGeoMatchImm.train.train:Using batch size: 16
+INFO:pyGeoMatchImm.train.train:Peptide frequencies: [('GILGFVFTL', 0.28280773143438453), ('KLGGALQAK', 0.237029501525941), ('RAKFKQLL', 0.04170905391658189), ('AVFDRKSDAK', 0.0335707019328586), ('LLWNGPMAV', 0.0254323499491353), ('ELAGIGILTV', 0.02034587995930824), ('IVTDFSVIK', 0.011190233977619531), ('TTDPSFLGRY', 0.01017293997965412), ('YLQPRTFLL', 0.008138351983723296), ('LLAGIGTVPI', 0.006103763987792472)] ...
+INFO:pyGeoMatchImm.train.train:Total unique peptides: 218
+INFO:pyGeoMatchImm.train.train:Selected top 10 peptides for cross-validation: ['RAKFKQLL', 'AVFDRKSDAK', 'LLWNGPMAV', 'ELAGIGILTV', 'IVTDFSVIK', 'TTDPSFLGRY', 'YLQPRTFLL', 'LLAGIGTVPI', 'RLRAEAQVK', 'SLLMWITQC']
+INFO:pyGeoMatchImm.train.train:Starting peptide RAKFKQLL with 164 test samples and 3768 train samples...
+INFO:pyGeoMatchImm.train.train:------------------ RAKFKQLL ------------------
+INFO:pyGeoMatchImm.train.train:Node feature length: 5
+INFO:pyGeoMatchImm.train.train:Training on 3768 samples.....
+INFO:pyGeoMatchImm.train.train:Validation on 164 samples.....

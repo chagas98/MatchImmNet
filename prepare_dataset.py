@@ -144,7 +144,7 @@ config = {
     "source"          : "pdb",
     "channels"        : ["TCR", "pMHC"],
     "pairing_method"  : "basic",
-    "embed_method"    : ["esm3", "atchley"],
+    "embed_method"    : ["atchley", "esm3"],
     "graph_method"    : "graphein",
     "negative_prop"   : 3,
     "edge_params"     : ["distance_threshold"],
@@ -167,7 +167,7 @@ id10x = ['34793243', '30418433', '35383307', '37872153', '32081129','30451992', 
 
 log.info("Loading dataset:")
 train_data = load_structural_data(tcr3d_path=tcr3d_path, 
-                                  af_score3_path=af_score3_path).head(30)
+                                  af_score3_path=af_score3_path)
 
 #log.info("Loading 01/05 dataset:")
 #df0105 = load_structural_data(tcr3d_path, af_score3_path, af_score2_0105_path)
@@ -203,3 +203,4 @@ for embed in embeds:
     
     #save channels
     torch.save(channels, f"data/02-processed/channels_graph_{embed}_score3pdb.pt")
+

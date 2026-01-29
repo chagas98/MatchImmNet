@@ -37,31 +37,21 @@ log.getLogger("MDAnalysis").setLevel(log.WARNING)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
-#Data
-train_data_path = "data/02-processed/tcrpMHC_combined_train_data_score3pdb.csv"
-train_data = pd.read_csv(train_data_path)
-channels_graph_path = "data/02-processed/channels_graph_atchley_score3pdb.pt"
-channels = torch.load(channels_graph_path, weights_only=False)
-
 model_params = {
     "n_output": 1,
     "dropout": 0.3,
-    "n_layers": 2,
-    "posenc_peptide": True,
-    "posenc_cdr": True,
-    "posenc_mhc": True
+    "n_layers": 2
 }
 
 train_params = {
     "learning_rate"   : 0.0001,
     "save_model"      : False,
-    #"gamma"           : 0.5,
     "weighted_loss"   : False,
-    "loss_function"    : "BCEWithLogits",
+    "loss_function"   : "BCEWithLogits",
     "num_epochs"      : 70,
     "batch_size"      : 16,
     "pep_freq_range" : [0.005, 0.1],
-    "k_top_peptides" : 5,
+    "k_top_peptides" : 10,
     "weight_decay"   : 0.01
 }
 
@@ -83,21 +73,14 @@ config = {
     "save_dir"        : ''
 }
 
-# Define models to train
-models_dict = {
-"GIN_cn1_ce1": {'model_class': XATTGraph,
-                            'cross_embed': True,
-                            'cross_nodes': True
-                            }
-}
+embed = config.get("embed_method")[0]  # "atchley" or "esm3"
 
-# embed-specific training params
-embed = config["embed_method"][0]
-if embed == "atchley":
-    config["train_params"] = dict(config.get("train_params", {}), norm=True, out_channels=16) #16 in original
-elif embed == "esm3":
-    config["train_params"] = dict(config.get("train_params", {}), norm=False, out_channels=128)
-    
+#Data
+train_data_path = "data/02-processed/tcrpMHC_combined_train_data_score3pdb.csv"
+train_data = pd.read_csv(train_data_path)
+channels_graph_path = f"data/02-processed/channels_graph_{embed}_score3pdb.pt"
+channels = torch.load(channels_graph_path, weights_only=False)
+
 chids, chlabels, chpeptides, chtras, chtrbs = zip(*[(i.get('id'), i.get('label'), i.get('peptide'), i.get('TRA'), i.get('TRB')) for i in channels])
 
 ds = ChannelsPairDataset(
@@ -115,32 +98,45 @@ validate_data(train_data, dict_lists={
 }, cols_to_check=["epitope", "label", "TRA", "TRB"])
 
 
-# Define models to train
-#models_dict = {
-#    "cangin": {'model_class': CrossAttentionNodesGIN}
-#}
-
-
+booleanopt = [True, False]
+models_dict = {}
 # add architectures with cross attention variants
-#for graph_enc, cross_nodes, cross_embed in product(
-#    ["GIN"], [True, False], [True, False]):
-#    arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
+for graph_enc, cross_nodes, cross_embed, pe_tcr, pe_epitope, pe_mhc in product(
+    ["GIN"], booleanopt, booleanopt, booleanopt, booleanopt, booleanopt):
+    arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}_petcr{int(pe_tcr)}_peepi{int(pe_epitope)}_pemhc{int(pe_mhc)}_{embed}"
 
-#    models_dict.update({arch: {'model_class': XATTGraph,
-#                                'cross_embed': cross_embed,
-#                                'cross_nodes': cross_nodes
-#                                }})
+    models_dict.update({arch: {'model_class': XATTGraph,
+                               'graph_encoder': graph_enc,
+                               'cross_embed': cross_embed,
+                               'cross_nodes': cross_nodes,
+                                'pe_tcr': pe_tcr,
+                                'pe_epitope': pe_epitope,
+                                'pe_mhc': pe_mhc
+                               }})
 
 for arch, model_cfg in models_dict.items():
-    
-    model_class = model_cfg['model_class']
+    run_config = deepcopy(config)
+    model_class = model_cfg.get('model_class', None)
+    run_config.get("model_params", {})["graph_encoder"] = model_cfg.get('graph_encoder', None)
+    run_config.get("model_params", {})["cross_embed"] = model_cfg.get('cross_embed', None)
+    run_config.get("model_params", {})["cross_nodes"] = model_cfg.get('cross_nodes', None)
+    run_config.get("model_params", {})["pe_tcr"] = model_cfg.get('pe_tcr', None)
+    run_config.get("model_params", {})["pe_epitope"] = model_cfg.get('pe_epitope', None)
+    run_config.get("model_params", {})["pe_mhc"] = model_cfg.get('pe_mhc', None)
 
+    # embed-specific training params
+    if embed == "atchley":
+        run_config["train_params"] = dict(run_config.get("train_params", {}), norm=True, out_channels=16) #16 in original
+    elif embed == "esm3":
+        run_config["train_params"] = dict(run_config.get("train_params", {}), norm=False, out_channels=128)
+        
+    log.info("Configuration model params: %s", run_config["model_params"])
     log.info("Running architecture: %s", arch)
 
     # save dir per-run
-    dropout = int(config["model_params"].get("dropout", 0) * 10)
-    save_dir = f"developments/score3_encoders/{arch}_{embed}_drop{dropout}"
-    config["save_dir"] = save_dir
+    dropout = int(run_config["model_params"].get("dropout", 0) * 10)
+    save_dir = f"developments/score3/{arch}_{embed}_drop{dropout}"
+    run_config["save_dir"] = save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     basename = save_dir.split("/")[-1]
 
@@ -150,13 +146,13 @@ for arch, model_cfg in models_dict.items():
             dataset=ds,
             device=device,
             peptides=chpeptides,
-            configs=config
+            configs=run_config
         )
 
         cv.run()
 
         with open(os.path.join(save_dir, "config.json"), "w") as fp:
-            json.dump(config, fp, indent=4)
+            json.dump(run_config, fp, indent=4)
 
         plot_precision_recall_curve(cv.raw_results['labels'],
                         cv.raw_results['predictions'],
@@ -171,7 +167,7 @@ for arch, model_cfg in models_dict.items():
     except Exception:
         log.exception("Run failed for %s with embed=%s", arch, embed)
 
-    del cv, ds, channels
+    del cv
     gc.collect()
     torch.cuda.empty_cache()
 

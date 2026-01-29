@@ -93,6 +93,7 @@ class CrossValidator:
         self.batch_size = self.cfg.get("batch_size", 0)
         self.k_top_peptides = self.cfg.get("k_top_peptides", 5)
         self.pfreqrange = self.cfg.get("pep_freq_range", [0.1, 0.2])
+        self.max_pep_len = max([len(p) for p in set(peptides)])
 
         # Preprocessing dataset (normalization, etc.)
         if self.configs.train_params.get('norm', False):
@@ -174,9 +175,8 @@ class CrossValidator:
             #    print('Label:', train_loader.dataset[i]['id'])
             #    print('ID:', train_loader.dataset[i]['y'])
 
-
             log.info(f'Node feature length: {node_feature_len}')
-            model = self.model_class(self.configs, node_features_len=node_feature_len)
+            model = self.model_class(self.configs, node_features_len=node_feature_len, max_pep_len=self.max_pep_len)
 
             # Train the model (epochs loops)
             trainer = Trainer(model, self.device, train_loader, val_loader, self.configs, pep)
@@ -247,6 +247,7 @@ class Trainer:
         self.n_epochs_stop = cfg.get("n_epochs_stop", 6)
         self.num_epochs = cfg.get("num_epochs", 50)
         self.weight_decay = cfg.get("weight_decay", 0.00005)
+        lr = cfg.get("learning_rate")
         self.save_model = cfg.get("save_model", False)
         self.ch_names = configs.channels
 
@@ -256,12 +257,12 @@ class Trainer:
         self.valloader = valloader
         
         #TODO : add other optimizers/losses
-        self.weighted_loss = cfg.get("weighted_loss", True)
+        self.weighted_loss = cfg.get("weighted_loss", False)
         self.loss_name = cfg.get("loss_function", "BCEWithLogits")
         self.loss_func = self._define_loss_function(self.loss_name, self.weighted_loss)
 
         #self.optimizer = torch.optim.SGD(self.model.parameters(), lr=cfg["learning_rate"], weight_decay=self.weight_decay)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg["learning_rate"], weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=self.weight_decay)
         self.scheduler = None #MultiStepLR(self.optimizer, milestones=cfg["milestones"], gamma=cfg["gamma"])
 
         # early stopping
@@ -282,7 +283,7 @@ class Trainer:
         log.info(f'Training on {len(self.trainloader.dataset)} samples.....')
         log.info(f'Validation on {len(self.valloader.dataset)} samples.....')
     
-    def _define_loss_function(self, loss_name: str, weighted: bool):
+    def _define_loss_function(self, loss_name: str, weighted: bool = False):
         if loss_name == "BCEWithLogits":
             if weighted:
                 return nn.BCEWithLogitsLoss(reduction='none')
@@ -300,13 +301,12 @@ class Trainer:
         weights = {pep: (weights[pep] / mean_weight).round(2) for pep in peptides}
         return weights
     
-    def run_loss_func(self, logits, labels, weighted: bool, weights=None):
+    def run_loss_func(self, logits, labels, weighted: bool = False, weights=None):
         
         if weighted:
             weights = labels.float().to(self.device)
             loss = self.loss_func(logits, labels.view(-1,1).float().to(self.device))
-            loss = (loss * weights * 0.1).mean()
-
+            loss = (loss * weights).mean()
         else:
             loss = self.loss_func(logits, labels.view(-1,1).float().to(self.device))
         return loss
@@ -348,9 +348,22 @@ class Trainer:
             
             pep_weights = self._batch_weights_by_peptide(peptides_in_batch)
             loss = self.run_loss_func(logits, label, weighted=self.weighted_loss, weights=pep_weights)
+            if torch.isnan(loss) or torch.isinf(loss):
+                raise RuntimeError("Loss became NaN/Inf")
+
+
             self.optimizer.zero_grad()
+
+            #torch.autograd.set_detect_anomaly(True)
             loss.backward()
+
+            # (optional but very useful)
+            #for name, p in self.model.named_parameters():
+            #    if p.grad is not None and torch.isnan(p.grad).any():
+            #        raise RuntimeError(f"NaN gradient in {name}")
+
             self.optimizer.step()
+
 
             probs = torch.sigmoid(logits).detach().cpu()
             predictions_tr = torch.cat((predictions_tr, probs), 0)

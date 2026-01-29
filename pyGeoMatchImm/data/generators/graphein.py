@@ -180,7 +180,7 @@ class GrapheinToChannels:
         self.embed_method = embed_method
 
         # Keep track of which columns to convert
-        base_columns = ["coords", "distance", "edge_index", "chain_id", "residue_number", "residue_name"]
+        base_columns = ["coords", "distance", "edge_index", "chain_id", "residue_number", "residue_name", "posit_TCR", "posit_MHC", "posit_epitope"]
         node_columns = self.cfg.node_params if self.cfg.node_params else []
         if self.embed_method not in node_columns:
             node_columns.append(self.embed_method)

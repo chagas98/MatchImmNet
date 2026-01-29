@@ -83,6 +83,7 @@ config = {
 # Define models to train
 models_dict = {
 "GIN_cn1_ce1": {'model_class': XATTGraph,
+                            'graph_encoder': 'GIN',
                             'cross_embed': True,
                             'cross_nodes': True
                             }
@@ -115,6 +116,14 @@ for arch, model_cfg in models_dict.items():
     
     model_class = model_cfg['model_class']
 
+    if model_class == XATTGraph:
+        cross_embed = model_cfg['cross_embed']
+        cross_nodes = model_cfg['cross_nodes']
+        config.update({
+            "cross_nodes"   : cross_nodes,
+            "cross_embed"   : cross_embed
+            })
+        
     log.info("Running architecture: %s", arch)
 
     # save dir per-run
@@ -130,7 +139,8 @@ for arch, model_cfg in models_dict.items():
             dataset=ds,
             device=device,
             peptides=chpeptides,
-            configs=config
+            configs=config,
+
         )
 
         cv.run()

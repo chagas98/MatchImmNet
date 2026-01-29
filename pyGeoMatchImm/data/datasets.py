@@ -134,10 +134,10 @@ class TCRpMHCDataset:
 
         log.info(f"\nApplying positional encodings...\n")
         self._positional_embedder() # Positional embedder
-        quit()
+
         log.info(f"\nGenerate negatives and combine with positives\n")
         # Here self._dataset becomes CompleteDataset with positives and negatives
-        self._dataset = self._genNegatives()
+        self._genNegatives()
 
         log.info(f"\nEmbedding sequences using methods: {self.cfg.embed_method}...\n")
         self._seq_embedder() # ESM embedder
@@ -244,6 +244,7 @@ class TCRpMHCDataset:
 
                 graphs_updated  = _embedder(struct_files, graphs)
                 for ch_name, g in graphs_updated.items():
+
                     sample.updatestructgraph(ch_name, g) # update graph in sample
                     log.debug(f"{method}: Updated graph for channel {ch_name} in sample {sample.id}:")
 
@@ -263,10 +264,9 @@ class TCRpMHCDataset:
                         raise ValueError(f"Unknown channel for positional encoding: {ch_name}")
                     
                 sample.updatestructgraph(ch_name, g_updated) # update graph in sample
-                print(g_updated.nodes(data=True))
             
                 log.debug(f"Positional: Updated graph for channel {ch_name} in sample {sample.id}:")
-            quit()
+
     def _genNegatives(self):
         sampler = DistNegativeSampler(
             sample_pairs=self._dataset,
@@ -276,7 +276,8 @@ class TCRpMHCDataset:
         list_new_partial_tcrs = sampler.generate_negatives()
         sampler.build_neg_dataset(list_new_partial_tcrs)
         sampler.parse_df_to_CompleteDataset()
-        return sampler.Dataset
+        self._dataset = sampler.Dataset
+
 
     def _graph_generator(self):
         """ Generate graphs for the parsed samples. Apply multiprocessing."""
@@ -379,9 +380,20 @@ class ChannelsGraph:
         else:
             raise ValueError(f"Graph does not have attribute '{self.embed_method}'")
 
-        return Data(x=torch.as_tensor(x), edge_index=g.edge_index, 
-                    chain_id=g.chain_id, resid=g.residue_number, 
-                    resname=g.residue_name, name=g.name) #TODO structural information can be add here
+        minimal_graphdata = Data(x=torch.as_tensor(x), edge_index=g.edge_index, 
+                                 chain_id=g.chain_id, resid=g.residue_number, 
+                                 resname=g.residue_name, name=g.name) #TODO structural information can be add here
+        
+        if hasattr(g, "posit_TCR"):
+            minimal_graphdata.posit_TCR = g.posit_TCR
+        
+        if hasattr(g, "posit_MHC"):
+            minimal_graphdata.posit_MHC = g.posit_MHC
+        
+        if hasattr(g, "posit_epitope"):
+            minimal_graphdata.posit_epitope = g.posit_epitope
+
+        return minimal_graphdata
 
     def _convert_one_pair(self, idx: int):
 
@@ -548,14 +560,21 @@ class ChannelsPairDataset(Dataset_n):
         hd['id'] = self.ids[idx]
 
         # Node stores: only x
+        # Channel 1
         hd[self.ch1_name].x = g1.x
         hd[self.ch1_name].resid = g1.resid
         hd[self.ch1_name].resname = g1.resname
         hd[self.ch1_name].chain_id = g1.chain_id
+        hd[self.ch1_name].posit_TCR = g1.posit_TCR
+
+        # Channel 2
         hd[self.ch2_name].x = g2.x
         hd[self.ch2_name].resid = g2.resid
         hd[self.ch2_name].resname = g2.resname
         hd[self.ch2_name].chain_id = g2.chain_id
+        hd[self.ch2_name].posit_MHC = g2.posit_MHC
+        hd[self.ch2_name].posit_epitope = g2.posit_epitope
+
 
         # Edge stores: edge_index (add edge_attr later if needed)
         et1 = (self.ch1_name, "intra", self.ch1_name)

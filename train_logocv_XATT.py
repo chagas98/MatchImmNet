@@ -144,6 +144,7 @@ for graph_enc, cross_nodes, cross_embed in product(
     arch = f"{graph_enc}_cn{int(cross_nodes)}_ce{int(cross_embed)}"
 
     models_dict.update({arch: {'model_class': XATTGraph,
+                               'graph_encoder': graph_enc,
                                 'cross_embed': cross_embed,
                                 'cross_nodes': cross_nodes
                                 }})
